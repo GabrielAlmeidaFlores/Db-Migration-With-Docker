@@ -32,7 +32,8 @@
 
 ### Why Use This Tool?
 
-- 🚀 **No Installation Hassles**: Uses Docker containers - no need to install MySQL, PostgreSQL, or SQL Server tools on your machine
+- 🚀 **Zero Installation**: Dialog binary included - works out of the box!
+- 🐳 **No Database Tools**: Uses Docker containers - no need to install MySQL, PostgreSQL, or SQL Server tools
 - 🎨 **User-Friendly Interface**: Beautiful dialog-based TUI that's easy to navigate
 - 🔄 **Multi-Database Support**: Works seamlessly with MySQL, PostgreSQL, and SQL Server
 - 💾 **Persistent Configuration**: Saves your settings for quick access next time
@@ -83,9 +84,19 @@
 
 ## 📋 Prerequisites
 
-Only **two** tools are required on your system:
+Only **one** tool is required on your system:
 
-### 1. Docker
+### System Requirements
+
+- **OS**: 
+  - ✅ Linux (any distribution) - **Works perfectly with bundled dialog**
+  - ✅ macOS - Requires: `brew install dialog`
+  - ⚠️ Windows - **Recommended: Use WSL2** (Windows Subsystem for Linux)
+  - ⚠️ Windows Git Bash - Requires manual dialog installation (not recommended)
+- **Architecture**: x86_64/amd64 (for bundled dialog), or any architecture with system dialog installed
+- **Bash**: Version 4.0 or higher
+
+### Docker
 
 Docker is used to run database commands without installing database clients.
 
@@ -101,25 +112,30 @@ docker --version
 
 For other operating systems, visit: [https://docs.docker.com/get-docker/](https://docs.docker.com/get-docker/)
 
-### 2. Dialog
+### Dialog (Included!)
 
-Dialog provides the terminal user interface.
+The `dialog` binary is **included** in the project under `dependencies/dialog/` for **Linux x86_64** systems (Ubuntu, Debian, Fedora, CentOS, etc.).
 
+**Compatibility:**
+- ✅ Linux x86_64 (amd64) - **Bundled binary included**
+- ⚠️ Other systems (macOS, ARM, etc.) - Install dialog manually
+
+The script automatically detects if the bundled binary works on your system. If not, it falls back to your system's dialog installation.
+
+**Manual Installation (if needed):**
 ```bash
 # Ubuntu/Debian
 sudo apt-get install dialog
 
 # RedHat/CentOS/Fedora
 sudo yum install dialog
+# or: sudo dnf install dialog
 
 # Arch Linux
 sudo pacman -S dialog
 
 # macOS (via Homebrew)
 brew install dialog
-
-# Verify installation
-dialog --version
 ```
 
 ---
@@ -263,6 +279,10 @@ db-migration-with-docker/
 ├── .gitignore                # Git ignore rules
 ├── README.md                  # This file
 ├── CHANGELOG.md              # Version history
+│
+├── dependencies/             # Bundled dependencies
+│   └── dialog/              # Dialog binary (included!)
+│       └── dialog           # Dialog executable
 │
 └── operations/               # Database-specific operation scripts
     ├── mysql-dump.sh         # MySQL export
@@ -494,13 +514,51 @@ ssh -L 3307:localhost:3306 user@production-server
 
 ### Common Issues and Solutions
 
-#### Issue: `dialog: command not found`
+#### Issue: Dialog not working
 
 **Solution:**
+The bundled dialog binary works on **Linux x86_64** systems. If you're on a different system (macOS, ARM, etc.), install dialog:
+
 ```bash
+# Test if bundled binary works
+./dependencies/dialog/dialog --version
+
+# If not, install for your system:
 sudo apt-get install dialog  # Ubuntu/Debian
 sudo yum install dialog      # RedHat/CentOS
+sudo dnf install dialog      # Fedora
+sudo pacman -S dialog        # Arch Linux
+brew install dialog          # macOS
 ```
+
+The script will automatically use your system's dialog if the bundled one doesn't work.
+
+#### Issue: Running on Windows
+
+**Problem:** The bundled dialog binary is Linux-only and won't work on Windows.
+
+**Solutions:**
+
+1. **Use WSL2 (Recommended)**
+   ```bash
+   # Install WSL2 with Ubuntu
+   wsl --install
+   
+   # Run the script inside WSL
+   cd /mnt/c/your/path/db-migration-with-docker
+   ./db-manager.sh
+   ```
+   ✅ Bundled dialog works perfectly in WSL2!
+
+2. **Docker Desktop with WSL2 Backend**
+   - Install Docker Desktop for Windows
+   - Enable WSL2 integration
+   - Run scripts from WSL2 terminal
+
+3. **Git Bash (Not Recommended)**
+   - Dialog binary won't work
+   - Would need to install Windows-compatible dialog
+   - Better to use WSL2 instead
 
 #### Issue: `docker: command not found`
 

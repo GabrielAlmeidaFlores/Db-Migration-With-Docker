@@ -10,6 +10,19 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/.config"
 DOCKER_NETWORK="db-migration-network"
 
+# Use local dialog binary if available and compatible, otherwise use system dialog
+LOCAL_DIALOG="$SCRIPT_DIR/dependencies/dialog/dialog"
+if [ -x "$LOCAL_DIALOG" ] && "$LOCAL_DIALOG" --version &>/dev/null; then
+    DIALOG="$LOCAL_DIALOG"
+    USE_LOCAL_DIALOG=true
+elif command -v dialog &>/dev/null; then
+    DIALOG="dialog"
+    USE_LOCAL_DIALOG=false
+else
+    DIALOG=""
+    USE_LOCAL_DIALOG=false
+fi
+
 # Function to clean up terminal on exit
 cleanup() {
     clear
@@ -68,12 +81,28 @@ ensure_docker_network() {
     fi
 }
 
-# Function to check if dialog is installed
+# Function to check if dialog is available
 check_dialog() {
-    if ! command -v dialog &>/dev/null; then
-        log_error "'dialog' is not installed."
-        log_warning "Run: sudo apt-get install dialog (Debian/Ubuntu) or sudo yum install dialog (RedHat/CentOS)"
+    if [ -z "$DIALOG" ]; then
+        clear
+        log_error "Dialog not available!"
+        echo ""
+        log_info "The bundled dialog binary is not compatible with your system."
+        log_info "Please install dialog for your system:"
+        echo ""
+        echo "  Ubuntu/Debian:    sudo apt-get install dialog"
+        echo "  RedHat/CentOS:    sudo yum install dialog"
+        echo "  Fedora:           sudo dnf install dialog"
+        echo "  Arch Linux:       sudo pacman -S dialog"
+        echo "  macOS (Homebrew): brew install dialog"
+        echo ""
         exit 1
+    fi
+    
+    if [ "$USE_LOCAL_DIALOG" = true ]; then
+        log_success "Using bundled dialog binary (Linux x86_64)"
+    else
+        log_info "Using system dialog"
     fi
 }
 
@@ -117,7 +146,7 @@ load_config() {
 # Main menu
 main_menu() {
     while true; do
-        CHOICE=$(dialog --clear --backtitle "DB Migration Manager with Docker" \
+        CHOICE=$($DIALOG --clear --backtitle "DB Migration Manager with Docker" \
             --title "Main Menu" \
             --menu "Choose an operation:" 15 60 6 \
             1 "🗄️  Configure Database" \
@@ -150,7 +179,7 @@ configure_database() {
     while true; do
         load_config || true
         
-        CONFIG_MENU=$(dialog --clear --backtitle "DB Migration Manager" \
+        CONFIG_MENU=$($DIALOG --clear --backtitle "DB Migration Manager" \
             --title "Configuration" \
             --menu "What do you want to configure?" 16 65 7 \
             1 "🗄️  Database Type (Current: ${DB_TYPE:-Not configured})" \
@@ -180,7 +209,7 @@ configure_database() {
 
 # Configure database type only
 configure_db_type() {
-    DB_TYPE=$(dialog --clear --backtitle "DB Migration Manager" \
+    DB_TYPE=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Database Type" \
         --menu "Select the type:" 12 50 3 \
         1 "MySQL/MariaDB" \
@@ -199,7 +228,7 @@ configure_db_type() {
     esac
     
     save_config
-    dialog --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Success" \
         --msgbox "Database type configured: $DB_TYPE" 6 40
 }
@@ -207,7 +236,7 @@ configure_db_type() {
 # Configure source
 configure_source() {
     exec 3>&1
-    VALUES=$(dialog --clear --backtitle "DB Migration Manager" \
+    VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Configuration - SOURCE" \
         --form "Fill in the SOURCE database data:" 15 60 5 \
         "Host:" 1 1 "${SRC_HOST:-localhost}" 1 15 40 0 \
@@ -231,7 +260,7 @@ configure_source() {
     SRC_DB="${arr[4]}"
     
     save_config
-    dialog --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Success" \
         --msgbox "SOURCE configuration saved!\n\nHost: $SRC_HOST:$SRC_PORT\nDB: $SRC_DB" 9 50
 }
@@ -239,7 +268,7 @@ configure_source() {
 # Configure destination
 configure_destination() {
     exec 3>&1
-    VALUES=$(dialog --clear --backtitle "DB Migration Manager" \
+    VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Configuration - DESTINATION" \
         --form "Fill in the DESTINATION database data:" 15 60 5 \
         "Host:" 1 1 "${DST_HOST:-localhost}" 1 15 40 0 \
@@ -263,14 +292,14 @@ configure_destination() {
     DST_DB="${arr[4]}"
     
     save_config
-    dialog --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Success" \
         --msgbox "DESTINATION configuration saved!\n\nHost: $DST_HOST:$DST_PORT\nDB: $DST_DB" 9 50
 }
 
 # Configure dump file
 configure_dump_file() {
-    DUMP_FILE=$(dialog --clear --backtitle "DB Migration Manager" \
+    DUMP_FILE=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Dump File" \
         --inputbox "Dump file path:" 8 70 "${DUMP_FILE:-$HOME/Downloads/database.dump}" \
         3>&1 1>&2 2>&3)
@@ -281,7 +310,7 @@ configure_dump_file() {
     fi
     
     save_config
-    dialog --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Success" \
         --msgbox "Dump file configured:\n\n$DUMP_FILE" 8 70
 }
@@ -289,7 +318,7 @@ configure_dump_file() {
 # Complete step-by-step configuration
 configure_full() {
     # Choose database type
-    DB_TYPE=$(dialog --clear --backtitle "DB Migration Manager" \
+    DB_TYPE=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "[1/4] Database Type" \
         --menu "Select the type:" 12 50 3 \
         1 "MySQL/MariaDB" \
@@ -309,7 +338,7 @@ configure_full() {
 
     # Configure source
     exec 3>&1
-    VALUES=$(dialog --clear --backtitle "DB Migration Manager" \
+    VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "[2/4] Configuration - SOURCE" \
         --form "Fill in the SOURCE database data:" 15 60 5 \
         "Host:" 1 1 "${SRC_HOST:-localhost}" 1 15 40 0 \
@@ -334,7 +363,7 @@ configure_full() {
 
     # Configure destination
     exec 3>&1
-    VALUES=$(dialog --clear --backtitle "DB Migration Manager" \
+    VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "[3/4] Configuration - DESTINATION" \
         --form "Fill in the DESTINATION database data:" 15 60 5 \
         "Host:" 1 1 "${DST_HOST:-localhost}" 1 15 40 0 \
@@ -358,7 +387,7 @@ configure_full() {
     DST_DB="${arr[4]}"
 
     # Dump file
-    DUMP_FILE=$(dialog --clear --backtitle "DB Migration Manager" \
+    DUMP_FILE=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "[4/4] Dump File" \
         --inputbox "Dump file path:" 8 70 "${DUMP_FILE:-$HOME/Downloads/database.dump}" \
         3>&1 1>&2 2>&3)
@@ -370,7 +399,7 @@ configure_full() {
 
     save_config
 
-    dialog --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "DB Migration Manager" \
         --title "✅ Complete Setup" \
         --msgbox "All settings saved!\n\nType: $DB_TYPE\n\nSource: $SRC_HOST:$SRC_PORT/$SRC_DB\nDestination: $DST_HOST:$DST_PORT/$DST_DB\n\nDump: $DUMP_FILE" 14 70
 }
@@ -378,13 +407,13 @@ configure_full() {
 # View configuration
 view_config() {
     if ! load_config; then
-        dialog --clear --backtitle "DB Migration Manager" \
+        $DIALOG --clear --backtitle "DB Migration Manager" \
             --title "Error" \
             --msgbox "No configuration found. Please configure first." 6 50
         return
     fi
 
-    dialog --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Current Configuration" \
         --msgbox "Type: $DB_TYPE\n\nSource:\n  Host: $SRC_HOST:$SRC_PORT\n  User: $SRC_USER\n  DB: $SRC_DB\n\nDestination:\n  Host: $DST_HOST:$DST_PORT\n  User: $DST_USER\n  DB: $DST_DB\n\nDump File: $DUMP_FILE" 18 60
 }
@@ -392,7 +421,7 @@ view_config() {
 # Perform dump
 perform_dump() {
     if ! load_config; then
-        dialog --clear --backtitle "DB Migration Manager" \
+        $DIALOG --clear --backtitle "DB Migration Manager" \
             --title "Error" \
             --msgbox "Please configure the database first." 6 50
         return
@@ -422,7 +451,7 @@ perform_dump() {
 # Perform load
 perform_load() {
     if ! load_config; then
-        dialog --clear --backtitle "DB Migration Manager" \
+        $DIALOG --clear --backtitle "DB Migration Manager" \
             --title "Error" \
             --msgbox "Please configure the database first." 6 50
         return
@@ -452,13 +481,13 @@ perform_load() {
 # Perform migration
 perform_migrate() {
     if ! load_config; then
-        dialog --clear --backtitle "DB Migration Manager" \
+        $DIALOG --clear --backtitle "DB Migration Manager" \
             --title "Error" \
             --msgbox "Please configure the database first." 6 50
         return
     fi
 
-    dialog --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Confirmation" \
         --yesno "Migrate $SRC_DB to $DST_DB?\n\nThis will:\n1. Dump from source\n2. Load to destination" 10 50
 

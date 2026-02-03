@@ -12,23 +12,36 @@ ENV LANG=C.UTF-8 \
 RUN apt-get update && apt-get install -y \
     bash \
     dialog \
-    docker.io \
     curl \
+    ca-certificates \
+    gnupg \
+    lsb-release \
     locales \
     && rm -rf /var/lib/apt/lists/* \
     && echo "C.UTF-8 UTF-8" > /etc/locale.gen \
     && locale-gen
+
+# Install Docker CLI (latest version)
+RUN install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
+    && chmod a+r /etc/apt/keyrings/docker.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+    $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y docker-ce-cli \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create working directory
 WORKDIR /app
 
 # Copy all scripts and dependencies
 COPY db-manager.sh /app/
+COPY lib/ /app/lib/
 COPY operations/ /app/operations/
 COPY dependencies/ /app/dependencies/
 
 # Make scripts executable
-RUN chmod +x /app/db-manager.sh /app/operations/*.sh
+RUN chmod +x /app/db-manager.sh /app/operations/*.sh /app/lib/*.sh
 
 # Create volume mount points
 RUN mkdir -p /dumps /config

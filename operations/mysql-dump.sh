@@ -23,7 +23,9 @@ log_error() { echo -e "${RED}❌ $*${NC}"; }
 log_progress() { echo -e "${YELLOW}⏳ $*${NC}"; }
 
 # Criar diretório de destino se não existir
-mkdir -p "$(dirname "$DUMP_FILE")"
+DUMP_DIR="$(dirname "$DUMP_FILE")"
+DUMP_BASENAME="$(basename "$DUMP_FILE")"
+mkdir -p "$DUMP_DIR"
 
 log_progress "Dumping $SRC_DB from $SRC_HOST:$SRC_PORT..."
 
@@ -31,24 +33,26 @@ log_progress "Dumping $SRC_DB from $SRC_HOST:$SRC_PORT..."
 docker run --rm \
     --network host \
     -e MYSQL_PWD="$SRC_PASS" \
-    -v "$(dirname "$DUMP_FILE"):/backup" \
+    -v "$DUMP_DIR:/backup" \
     mysql:8.0 \
-    mysqldump \
-    -h "$SRC_HOST" \
-    -P "$SRC_PORT" \
-    -u "$SRC_USER" \
+    sh -c "mysqldump \
+    -h $SRC_HOST \
+    -P $SRC_PORT \
+    -u $SRC_USER \
     --single-transaction \
     --routines \
     --triggers \
     --events \
-    "$SRC_DB" >/tmp/mysql-dump-temp.sql
-
-# Mover para destino final
-mv /tmp/mysql-dump-temp.sql "$DUMP_FILE"
+    $SRC_DB > /backup/$DUMP_BASENAME"
 
 if [ $? -ne 0 ]; then
     log_error "Dump failed."
-    rm -f "$DUMP_FILE"
+    exit 1
+fi
+
+# Verificar se o arquivo foi criado
+if [ ! -f "$DUMP_FILE" ]; then
+    log_error "Dump file was not created."
     exit 1
 fi
 

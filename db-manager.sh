@@ -371,7 +371,7 @@ perform_dump() {
     clear
     log_header "DUMP - Exporting Database"
     log_info "🔄 Starting dump of $SRC_DB..."
-    ensure_docker_network
+    ensure_docker_network "$DOCKER_NETWORK"
 
     case $DB_TYPE in
     mysql)
@@ -401,7 +401,7 @@ perform_load() {
     clear
     log_header "LOAD - Importing Database"
     log_info "📥 Starting load to $DST_DB..."
-    ensure_docker_network
+    ensure_docker_network "$DOCKER_NETWORK"
 
     case $DB_TYPE in
     mysql)
@@ -439,7 +439,7 @@ perform_migrate() {
     clear
     log_header "MIGRATE - Complete Migration"
     log_info "🔄 Starting migration from $SRC_DB to $DST_DB..."
-    ensure_docker_network
+    ensure_docker_network "$DOCKER_NETWORK"
 
     # Dump
     echo ""

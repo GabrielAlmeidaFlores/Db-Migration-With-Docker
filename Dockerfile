@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     gnupg \
     lsb-release \
     locales \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/* \
     && echo "C.UTF-8 UTF-8" > /etc/locale.gen \
     && locale-gen
@@ -39,6 +40,9 @@ COPY db-manager.sh /app/
 COPY lib/ /app/lib/
 COPY operation/ /app/operation/
 COPY dependencies/ /app/dependencies/
+
+# Convert line endings from CRLF to LF (Windows to Linux)
+RUN dos2unix /app/db-manager.sh /app/operation/*.sh /app/lib/*.sh
 
 # Make scripts executable
 RUN chmod +x /app/db-manager.sh /app/operation/*.sh /app/lib/*.sh

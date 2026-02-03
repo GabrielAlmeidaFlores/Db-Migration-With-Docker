@@ -90,9 +90,9 @@ Only **one** tool is required on your system:
 
 - **OS**: 
   - ✅ Linux (any distribution) - **Works perfectly with bundled dialog**
-  - ✅ macOS - Requires: `brew install dialog`
-  - ⚠️ Windows - **Recommended: Use WSL2** (Windows Subsystem for Linux)
-  - ⚠️ Windows Git Bash - Requires manual dialog installation (not recommended)
+  - ✅ macOS - Requires: `brew install dialog` (or use Docker mode)
+  - ✅ **Windows - Use Docker Mode** (`./run-docker.sh`) - **Works out of the box!**
+  - ⚠️ Windows Git Bash (direct) - Requires manual dialog installation (not recommended)
 - **Architecture**: x86_64/amd64 (for bundled dialog), or any architecture with system dialog installed
 - **Bash**: Version 4.0 or higher
 
@@ -142,41 +142,70 @@ brew install dialog
 
 ## 🚀 Installation
 
-### Step 1: Clone or Download
+### Option A: Direct Mode (Linux/macOS/WSL)
+
+**Step 1:** Clone or Download
 
 ```bash
 # Clone this repository (if using git)
 git clone <repository-url>
-cd db-migration-with-docker
+cd Database-Migration-Manager
 
 # Or simply download and extract the files
 ```
 
-### Step 2: Make Scripts Executable
+**Step 2:** Make Scripts Executable
 
 ```bash
 chmod +x db-manager.sh
 chmod +x operations/*.sh
 ```
 
-### Step 3: Verify Installation
+**Step 3:** Run
 
 ```bash
 ./db-manager.sh
 ```
 
-You should see the main menu appear!
+### Option B: Docker Mode (Windows/Any OS) ⭐ **Recommended for Windows**
+
+**Step 1:** Clone or Download (same as above)
+
+**Step 2:** Make run-docker.sh Executable
+
+```bash
+chmod +x run-docker.sh
+```
+
+**Step 3:** Run in Docker Mode
+
+```bash
+./run-docker.sh
+```
+
+✅ First run builds the image automatically (one time only)  
+✅ All dependencies pre-installed  
+✅ Works on **any OS**!
 
 ---
 
 ## 🎮 Quick Start
 
+### Choose Your Mode
+
+**Direct Mode (Linux/macOS/WSL):**
+```bash
+./db-manager.sh
+```
+
+**Docker Mode (Windows/Any OS):**
+```bash
+./run-docker.sh
+```
+
 ### First Time Setup
 
-1. **Start the application**
-   ```bash
-   ./db-manager.sh
-   ```
+1. **Start the application** (choose your mode above)
 
 2. **Configure your database** (Option 1)
    - Choose database type (MySQL/PostgreSQL/SQL Server)
@@ -272,9 +301,11 @@ Cleanly exits the application and resets terminal colors.
 ### Project Structure
 
 ```
-db-migration-with-docker/
+Database-Migration-Manager/
 │
 ├── db-manager.sh              # Main application entry point
+├── run-docker.sh              # Docker mode wrapper ⭐ NEW
+├── Dockerfile                 # Docker image definition ⭐ NEW
 ├── .config                    # Configuration file (auto-generated)
 ├── .gitignore                # Git ignore rules
 ├── README.md                  # This file
@@ -283,6 +314,8 @@ db-migration-with-docker/
 ├── dependencies/             # Bundled dependencies
 │   └── dialog/              # Dialog binary (included!)
 │       └── dialog           # Dialog executable
+│
+├── dumps/                    # Default location for dump files
 │
 └── operations/               # Database-specific operation scripts
     ├── mysql-dump.sh         # MySQL export
@@ -295,6 +328,7 @@ db-migration-with-docker/
 
 ### How It Works
 
+**Direct Mode:**
 ```
 ┌─────────────┐
 │   User      │
@@ -319,6 +353,29 @@ db-migration-with-docker/
 │   Docker    │ ---> │  Database    │
 │ Containers  │ <--- │  Servers     │
 └─────────────┘      └──────────────┘
+```
+
+**Docker Mode (run-docker.sh):**
+```
+┌──────────────────────────────────────┐
+│      Docker Container                │
+│  ┌─────────────┐                    │      ┌──────────────┐
+│  │   Dialog    │                    │      │  Database    │
+│  │     TUI     │                    │      │  Servers     │
+│  └──────┬──────┘                    │      └──────┬───────┘
+│         │                            │             │
+│         v                            │             │
+│  ┌─────────────┐                    │             │
+│  │ db-manager  │                    │             │
+│  │   .sh       │                    │             │
+│  └──────┬──────┘                    │             │
+│         │                            │             │
+│         v                            │             │
+│  ┌─────────────┐                    │             │
+│  │  Operation  │ ────────────────────────────────>│
+│  │   Scripts   │ <───────────────────────────────│
+│  └─────────────┘   Docker socket   │             │
+└──────────────────────────────────────┘
 ```
 
 ### Database-Specific Implementations
@@ -545,7 +602,7 @@ The script will automatically use your system's dialog if the bundled one doesn'
    wsl --install
    
    # Run the script inside WSL
-   cd /mnt/c/your/path/db-migration-with-docker
+   cd /mnt/c/your/path/Database-Migration-Manager
    ./db-manager.sh
    ```
    ✅ Bundled dialog works perfectly in WSL2!
@@ -670,18 +727,20 @@ Having issues? Need help?
 
 ## 🔗 Quick Links
 
-- **Project Directory**: `db-migration-with-docker/`
-- **Main Script**: `./db-manager.sh`
+- **Project Directory**: `Database-Migration-Manager/`
+- **Direct Mode**: `./db-manager.sh` (Linux/macOS/WSL)
+- **Docker Mode**: `./run-docker.sh` (Windows/Any OS)
 - **Configuration**: `.config` (auto-generated)
 - **Operations**: `operations/*.sh`
 
 ## 📊 Version
 
-**Current Version**: 2.0  
+**Current Version**: 3.0  
 **Last Updated**: February 2026  
-**Status**: Production Ready ✅
+**Status**: Production Ready ✅  
+**New in 3.0**: Docker mode support for Windows! 🎉
 
-## 🎯 Características
+---
 
 - **Interface Interativa**: Interface TUI (Text User Interface) usando Dialog
 - **Multi-Database**: Suporte para MySQL, PostgreSQL e SQL Server
@@ -718,7 +777,7 @@ Apenas duas ferramentas são necessárias:
 ### Iniciar o gerenciador
 
 ```bash
-cd db-migration-with-docker
+cd Database-Migration-Manager
 chmod +x db-manager.sh
 ./db-manager.sh
 ```
@@ -754,7 +813,7 @@ O sistema apresenta um menu com as seguintes opções:
 ## 🗂️ Estrutura de Arquivos
 
 ```
-db-migration-with-docker/
+Database-Migration-Manager/
 ├── db-manager.sh              # Script principal com interface Dialog
 ├── .config                    # Arquivo de configuração (criado automaticamente)
 ├── operations/                # Scripts de operação por banco

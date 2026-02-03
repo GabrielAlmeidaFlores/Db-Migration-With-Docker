@@ -8,7 +8,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/.config"
-DOCKER_NETWORK="db-migration-network"
+DOCKER_NETWORK="database-migration-network"
 
 # Use local dialog binary if available and compatible, otherwise use system dialog
 LOCAL_DIALOG="$SCRIPT_DIR/dependencies/dialog/dialog"

@@ -375,13 +375,13 @@ perform_dump() {
 
     case $DB_TYPE in
     mysql)
-        "$SCRIPT_DIR/operations/mysql-dump.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/mysql-dump.operation.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
         ;;
     postgres)
-        "$SCRIPT_DIR/operations/postgres-dump.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/postgres-dump.operation.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
         ;;
     sqlserver)
-        "$SCRIPT_DIR/operations/sqlserver-dump.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/sqlserver-dump.operation.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
         ;;
     esac
 
@@ -405,13 +405,13 @@ perform_load() {
 
     case $DB_TYPE in
     mysql)
-        "$SCRIPT_DIR/operations/mysql-load.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/mysql-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
         ;;
     postgres)
-        "$SCRIPT_DIR/operations/postgres-load.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/postgres-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
         ;;
     sqlserver)
-        "$SCRIPT_DIR/operations/sqlserver-load.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/sqlserver-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
         ;;
     esac
 
@@ -446,13 +446,13 @@ perform_migrate() {
     log_step "Step 1/2: Dump..."
     case $DB_TYPE in
     mysql)
-        "$SCRIPT_DIR/operations/mysql-dump.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/mysql-dump.operation.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
         ;;
     postgres)
-        "$SCRIPT_DIR/operations/postgres-dump.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/postgres-dump.operation.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
         ;;
     sqlserver)
-        "$SCRIPT_DIR/operations/sqlserver-dump.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/sqlserver-dump.operation.sh" "$SRC_HOST" "$SRC_PORT" "$SRC_USER" "$SRC_PASS" "$SRC_DB" "$DUMP_FILE"
         ;;
     esac
 
@@ -461,13 +461,13 @@ perform_migrate() {
     log_step "Step 2/2: Load..."
     case $DB_TYPE in
     mysql)
-        "$SCRIPT_DIR/operations/mysql-load.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/mysql-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
         ;;
     postgres)
-        "$SCRIPT_DIR/operations/postgres-load.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/postgres-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
         ;;
     sqlserver)
-        "$SCRIPT_DIR/operations/sqlserver-load.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/sqlserver-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
         ;;
     esac
 

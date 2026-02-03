@@ -158,7 +158,7 @@ cd Database-Migration-Manager
 
 ```bash
 chmod +x db-manager.sh
-chmod +x operations/*.sh
+chmod +x operation/*.sh
 ```
 
 **Step 3:** Run
@@ -320,13 +320,13 @@ Database-Migration-Manager/
 │
 ├── dumps/                    # Default location for dump files
 │
-└── operations/               # Database-specific operation scripts
-    ├── mysql-dump.sh         # MySQL export
-    ├── mysql-load.sh         # MySQL import
-    ├── postgres-dump.sh      # PostgreSQL export
-    ├── postgres-load.sh      # PostgreSQL import
-    ├── sqlserver-dump.sh     # SQL Server export
-    └── sqlserver-load.sh     # SQL Server import
+└── operation/               # Database-specific operation scripts
+    ├── mysql-dump.operation.sh         # MySQL export
+    ├── mysql-load.operation.sh         # MySQL import
+    ├── postgres-dump.operation.sh      # PostgreSQL export
+    ├── postgres-load.operation.sh      # PostgreSQL import
+    ├── sqlserver-dump.operation.sh     # SQL Server export
+    └── sqlserver-load.operation.sh     # SQL Server import
 ```
 
 ### How It Works
@@ -734,7 +734,7 @@ Having issues? Need help?
 - **Direct Mode**: `./db-manager.sh` (Linux/macOS/WSL)
 - **Docker Mode**: `./run-docker.sh` (Windows/Any OS)
 - **Configuration**: `.config` (auto-generated)
-- **Operations**: `operations/*.sh`
+- **Operations**: `operation/*.sh`
 
 ## 📊 Version
 
@@ -819,13 +819,13 @@ O sistema apresenta um menu com as seguintes opções:
 Database-Migration-Manager/
 ├── db-manager.sh              # Script principal com interface Dialog
 ├── .config                    # Arquivo de configuração (criado automaticamente)
-├── operations/                # Scripts de operação por banco
-│   ├── mysql-dump.sh
-│   ├── mysql-load.sh
-│   ├── postgres-dump.sh
-│   ├── postgres-load.sh
-│   ├── sqlserver-dump.sh
-│   └── sqlserver-load.sh
+├── operation/                # Scripts de operação por banco
+│   ├── mysql-dump.operation.sh
+│   ├── mysql-load.operation.sh
+│   ├── postgres-dump.operation.sh
+│   ├── postgres-load.operation.sh
+│   ├── sqlserver-dump.operation.sh
+│   └── sqlserver-load.operation.sh
 └── README.md
 ```
 
@@ -906,7 +906,7 @@ As configurações são salvas automaticamente em `.config` e incluem:
 
 ### Permissão negada ao executar script
 - Execute: `chmod +x db-manager.sh`
-- Certifique-se que os scripts em `operations/` também são executáveis
+- Certifique-se que os scripts em `operation/` também são executáveis
 
 ## 📝 Notas
 

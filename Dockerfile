@@ -37,11 +37,11 @@ WORKDIR /app
 # Copy all scripts and dependencies
 COPY db-manager.sh /app/
 COPY lib/ /app/lib/
-COPY operations/ /app/operations/
+COPY operation/ /app/operation/
 COPY dependencies/ /app/dependencies/
 
 # Make scripts executable
-RUN chmod +x /app/db-manager.sh /app/operations/*.sh /app/lib/*.sh
+RUN chmod +x /app/db-manager.sh /app/operation/*.sh /app/lib/*.sh
 
 # Create volume mount points
 RUN mkdir -p /dumps /config

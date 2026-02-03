@@ -56,6 +56,13 @@ check_dialog() {
 
 # Note: check_docker() is now provided by lib/utils.sh
 
+# Function to generate dump filename
+generate_dump_filename() {
+    local db_type="$1"
+    local timestamp=$(date +%Y%m%d-%H%M%S)
+    echo "${db_type}-${timestamp}.txt"
+}
+
 # Function to save configuration
 save_config() {
     cat >"$CONFIG_FILE" <<EOF
@@ -70,7 +77,7 @@ DST_PORT=$DST_PORT
 DST_USER=$DST_USER
 DST_PASS=$DST_PASS
 DST_DB=$DST_DB
-DUMP_FILE=$DUMP_FILE
+DUMP_DIR=$DUMP_DIR
 EOF
     log_success "Configuration saved to $CONFIG_FILE"
 }
@@ -126,7 +133,7 @@ configure_database() {
             1 "🗄️  Database Type (Current: ${DB_TYPE:-Not configured})" \
             2 "📤 SOURCE Configuration" \
             3 "📥 DESTINATION Configuration" \
-            4 "💾 Dump File (Location)" \
+            4 "💾 Dump Directory (Auto-named files)" \
             5 "✅ Complete Setup (Step by Step)" \
             6 "👁️  View Current Configuration" \
             7 "🔙 Back to Main Menu" \
@@ -240,9 +247,9 @@ configure_destination() {
 
 # Configure dump file
 configure_dump_file() {
-    DUMP_FILE=$($DIALOG --clear --backtitle "DB Migration Manager" \
-        --title "Dump File" \
-        --inputbox "Dump file path:" 8 70 "${DUMP_FILE:-$HOME/Downloads/database.dump}" \
+    DUMP_DIR=$($DIALOG --clear --backtitle "DB Migration Manager" \
+        --title "Dump Directory" \
+        --inputbox "Directory where dump files will be saved:\n\nFilename will be auto-generated as:\n<db-engine>-<timestamp>.txt" 12 70 "${DUMP_DIR:-$HOME/Downloads}" \
         3>&1 1>&2 2>&3)
 
     if [ $? -ne 0 ]; then
@@ -250,10 +257,13 @@ configure_dump_file() {
         return
     fi
     
+    # Create directory if it doesn't exist
+    mkdir -p "$DUMP_DIR" 2>/dev/null
+    
     save_config
     $DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Success" \
-        --msgbox "Dump file configured:\n\n$DUMP_FILE" 8 70
+        --msgbox "Dump directory configured:\n\n$DUMP_DIR\n\nFiles will be named: <db-engine>-<timestamp>.dump" 10 70
 }
 
 # Complete step-by-step configuration
@@ -327,22 +337,25 @@ configure_full() {
     DST_PASS="${arr[3]}"
     DST_DB="${arr[4]}"
 
-    # Dump file
-    DUMP_FILE=$($DIALOG --clear --backtitle "DB Migration Manager" \
-        --title "[4/4] Dump File" \
-        --inputbox "Dump file path:" 8 70 "${DUMP_FILE:-$HOME/Downloads/database.dump}" \
+    # Dump directory
+    DUMP_DIR=$($DIALOG --clear --backtitle "DB Migration Manager" \
+        --title "[4/4] Dump Directory" \
+        --inputbox "Directory for dump files:\n\nFiles will be auto-named:\n<db-engine>-<timestamp>.txt" 12 70 "${DUMP_DIR:-$HOME/Downloads}" \
         3>&1 1>&2 2>&3)
 
     if [ $? -ne 0 ]; then
         # Cancel or ESC - cancel complete setup
         return
     fi
+    
+    # Create directory if it doesn't exist
+    mkdir -p "$DUMP_DIR" 2>/dev/null
 
     save_config
 
     $DIALOG --clear --backtitle "DB Migration Manager" \
         --title "✅ Complete Setup" \
-        --msgbox "All settings saved!\n\nType: $DB_TYPE\n\nSource: $SRC_HOST:$SRC_PORT/$SRC_DB\nDestination: $DST_HOST:$DST_PORT/$DST_DB\n\nDump: $DUMP_FILE" 14 70
+        --msgbox "All settings saved!\n\nType: $DB_TYPE\n\nSource: $SRC_HOST:$SRC_PORT/$SRC_DB\nDestination: $DST_HOST:$DST_PORT/$DST_DB\n\nDump Dir: $DUMP_DIR\nFiles: <db-engine>-<timestamp>.dump" 16 70
 }
 
 # View configuration
@@ -353,10 +366,13 @@ view_config() {
             --msgbox "No configuration found. Please configure first." 6 50
         return
     fi
+    
+    # Show configured or not configured for dump directory
+    local dump_dir_display="${DUMP_DIR:-[Not configured]}"
 
     $DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Current Configuration" \
-        --msgbox "Type: $DB_TYPE\n\nSource:\n  Host: $SRC_HOST:$SRC_PORT\n  User: $SRC_USER\n  DB: $SRC_DB\n\nDestination:\n  Host: $DST_HOST:$DST_PORT\n  User: $DST_USER\n  DB: $DST_DB\n\nDump File: $DUMP_FILE" 18 60
+        --msgbox "Type: $DB_TYPE\n\nSource:\n  Host: $SRC_HOST:$SRC_PORT\n  User: $SRC_USER\n  DB: $SRC_DB\n\nDestination:\n  Host: $DST_HOST:$DST_PORT\n  User: $DST_USER\n  DB: $DST_DB\n\nDump Directory: $dump_dir_display\nFile naming: <db-engine>-<timestamp>.txt" 20 60
 }
 
 # Perform dump
@@ -367,11 +383,27 @@ perform_dump() {
             --msgbox "Please configure the database first." 6 50
         return
     fi
+    
+    # Validate DUMP_DIR is configured
+    if [ -z "$DUMP_DIR" ]; then
+        $DIALOG --clear --backtitle "DB Migration Manager" \
+            --title "Error" \
+            --msgbox "Dump directory not configured. Please configure it first." 6 60
+        return
+    fi
+    
+    # Ensure directory exists
+    ensure_dir "$DUMP_DIR"
 
     clear
     log_header "DUMP - Exporting Database"
     log_info "🔄 Starting dump of $SRC_DB..."
     ensure_docker_network "$DOCKER_NETWORK"
+    
+    # Generate dump filename automatically
+    DUMP_FILENAME=$(generate_dump_filename "$DB_TYPE")
+    DUMP_FILE="$DUMP_DIR/$DUMP_FILENAME"
+    log_info "📄 File: $DUMP_FILENAME"
 
     case $DB_TYPE in
     mysql)
@@ -397,21 +429,48 @@ perform_load() {
             --msgbox "Please configure the database first." 6 50
         return
     fi
+    
+    # Validate DUMP_DIR is configured
+    if [ -z "$DUMP_DIR" ]; then
+        $DIALOG --clear --backtitle "DB Migration Manager" \
+            --title "Error" \
+            --msgbox "Dump directory not configured. Please configure it first." 6 60
+        return
+    fi
+    
+    # Ask user to select dump file
+    SELECTED_DUMP=$($DIALOG --clear --backtitle "DB Migration Manager" \
+        --title "Select Dump File" \
+        --inputbox "Enter the full path to the dump file:" 8 70 "${DUMP_DIR}/$(ls -t "$DUMP_DIR"/*.txt 2>/dev/null | head -1 | xargs basename 2>/dev/null)" \
+        3>&1 1>&2 2>&3)
+    
+    if [ $? -ne 0 ]; then
+        # Cancel or ESC
+        return
+    fi
+    
+    if [ ! -f "$SELECTED_DUMP" ]; then
+        $DIALOG --clear --backtitle "DB Migration Manager" \
+            --title "Error" \
+            --msgbox "File not found: $SELECTED_DUMP" 6 50
+        return
+    fi
 
     clear
     log_header "LOAD - Importing Database"
     log_info "📥 Starting load to $DST_DB..."
+    log_info "📄 File: $(basename "$SELECTED_DUMP")"
     ensure_docker_network "$DOCKER_NETWORK"
 
     case $DB_TYPE in
     mysql)
-        "$SCRIPT_DIR/operation/mysql-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/mysql-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$SELECTED_DUMP"
         ;;
     postgres)
-        "$SCRIPT_DIR/operation/postgres-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/postgres-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$SELECTED_DUMP"
         ;;
     sqlserver)
-        "$SCRIPT_DIR/operation/sqlserver-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+        "$SCRIPT_DIR/operation/sqlserver-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$SELECTED_DUMP"
         ;;
     esac
 
@@ -427,6 +486,17 @@ perform_migrate() {
             --msgbox "Please configure the database first." 6 50
         return
     fi
+    
+    # Validate DUMP_DIR is configured
+    if [ -z "$DUMP_DIR" ]; then
+        $DIALOG --clear --backtitle "DB Migration Manager" \
+            --title "Error" \
+            --msgbox "Dump directory not configured. Please configure it first." 6 60
+        return
+    fi
+    
+    # Ensure directory exists
+    ensure_dir "$DUMP_DIR"
 
     $DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Confirmation" \
@@ -440,6 +510,11 @@ perform_migrate() {
     log_header "MIGRATE - Complete Migration"
     log_info "🔄 Starting migration from $SRC_DB to $DST_DB..."
     ensure_docker_network "$DOCKER_NETWORK"
+    
+    # Generate dump filename automatically
+    DUMP_FILENAME=$(generate_dump_filename "$DB_TYPE")
+    DUMP_FILE="$DUMP_DIR/$DUMP_FILENAME"
+    log_info "📄 File: $DUMP_FILENAME"
 
     # Dump
     echo ""

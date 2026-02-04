@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# MySQL Load usando Docker
-# Note: Not using 'set -e' to handle errors gracefully
-
 DST_HOST=$1
 DST_PORT=$2
 DST_USER=$3
@@ -16,7 +13,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Funções de log
 log_info() { echo -e "${BLUE}ℹ️  $*${NC}"; }
 log_success() { echo -e "${GREEN}✅ $*${NC}"; }
 log_error() { echo -e "${RED}❌ $*${NC}"; }
@@ -31,7 +27,6 @@ fi
 
 log_info "Creating database $DST_DB on $DST_HOST:$DST_PORT if it doesn't exist..."
 
-# Criar database se não existir
 docker run --rm \
     --network host \
     -e MYSQL_PWD="$DST_PASS" \
@@ -44,9 +39,8 @@ docker run --rm \
 
 log_progress "Importing into $DST_DB on $DST_HOST:$DST_PORT..."
 
-# Importar dump
+
 if [ -n "$RUNNING_IN_DOCKER" ]; then
-    # Rodando em Docker: passar dump via stdin
     cat "$DUMP_FILE" | docker run --rm -i \
         --network host \
         -e MYSQL_PWD="$DST_PASS" \
@@ -58,7 +52,7 @@ if [ -n "$RUNNING_IN_DOCKER" ]; then
         --verbose \
         "$DST_DB"
 else
-    # Rodando direto no host: usar volume mount
+
     DUMP_DIR="$(dirname "$DUMP_FILE")"
     DUMP_BASENAME="$(basename "$DUMP_FILE")"
     docker run --rm \

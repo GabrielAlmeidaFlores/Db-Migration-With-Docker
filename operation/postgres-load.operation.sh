@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# PostgreSQL Load usando Docker
-# Note: Not using 'set -e' to handle errors gracefully
-
 DST_HOST=$1
 DST_PORT=$2
 DST_USER=$3
@@ -16,7 +13,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Funções de log
 log_info() { echo -e "${BLUE}ℹ️  $*${NC}"; }
 log_success() { echo -e "${GREEN}✅ $*${NC}"; }
 log_error() { echo -e "${RED}❌ $*${NC}"; }
@@ -31,9 +27,7 @@ fi
 
 log_progress "Importing (pg_restore) into $DST_DB on $DST_HOST:$DST_PORT..."
 
-# Import with pg_restore using Docker (version 16 for compatibility)
 if [ -n "$RUNNING_IN_DOCKER" ]; then
-    # Rodando em Docker: passar dump via stdin
     cat "$DUMP_FILE" | docker run --rm -i \
         --network host \
         -e PGPASSWORD="$DST_PASS" \
@@ -49,7 +43,6 @@ if [ -n "$RUNNING_IN_DOCKER" ]; then
         --no-owner \
         --no-acl
 else
-    # Rodando direto no host: usar volume mount
     DUMP_DIR="$(dirname "$DUMP_FILE")"
     DUMP_BASENAME="$(basename "$DUMP_FILE")"
     docker run --rm \

@@ -1,19 +1,11 @@
 #!/bin/bash
 
-# DB Manager - Interface to manage database dumps, loads and migrations
-# Uses Docker to run commands without needing to install tools locally
-
-# Note: We DON'T use 'set -e' because dialog returns error codes on cancel/ESC
-# and we want to handle those gracefully without exiting
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/.config"
 DOCKER_NETWORK="database-migration-network"
 
-# Load utility functions
 source "$SCRIPT_DIR/lib/log.lib.sh"
 
-# Use local dialog binary if available and compatible, otherwise use system dialog
 LOCAL_DIALOG="$SCRIPT_DIR/dependencies/dialog/dialog"
 if [ -x "$LOCAL_DIALOG" ] && "$LOCAL_DIALOG" --version &>/dev/null; then
     DIALOG="$LOCAL_DIALOG"
@@ -26,10 +18,8 @@ else
     USE_LOCAL_DIALOG=false
 fi
 
-# Set trap to clean up on exit
 trap cleanup_terminal EXIT
 
-# Function to check if dialog is available
 check_dialog() {
     if [ -z "$DIALOG" ]; then
         clear
@@ -54,16 +44,13 @@ check_dialog() {
     fi
 }
 
-# Note: check_docker() is now provided by lib/utils.sh
-
-# Function to generate dump filename
+generate_dump_filename() {
 generate_dump_filename() {
     local db_type="$1"
     local timestamp=$(date +%Y%m%d-%H%M%S)
     echo "${db_type}-${timestamp}.txt"
 }
 
-# Function to save configuration
 save_config() {
     cat >"$CONFIG_FILE" <<EOF
 DB_TYPE=$DB_TYPE
@@ -82,7 +69,6 @@ EOF
     log_success "Configuration saved to $CONFIG_FILE"
 }
 
-# Function to load configuration
 load_config() {
     if [ -f "$CONFIG_FILE" ]; then
         source "$CONFIG_FILE"
@@ -91,7 +77,6 @@ load_config() {
     return 1
 }
 
-# Main menu
 main_menu() {
     while true; do
         CHOICE=$($DIALOG --clear --backtitle "DB Migration Manager with Docker" \
@@ -116,13 +101,11 @@ main_menu() {
             exit 0
             ;;
         *)
-            # Cancel ou ESC - continua no loop
             ;;
         esac
     done
 }
 
-# Configure database
 configure_database() {
     while true; do
         load_config || true
@@ -148,14 +131,12 @@ configure_database() {
         6) view_config ;;
         7) return ;;
         *) 
-            # Cancel or ESC - back to main menu
             return
             ;;
         esac
     done
 }
 
-# Configure database type only
 configure_db_type() {
     DB_TYPE=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Database Type" \
@@ -170,7 +151,6 @@ configure_db_type() {
     2) DB_TYPE="postgres" ;;
     3) DB_TYPE="sqlserver" ;;
     *)
-        # Cancel or ESC - return without saving
         return
         ;;
     esac
@@ -181,7 +161,6 @@ configure_db_type() {
         --msgbox "Database type configured: $DB_TYPE" 6 40
 }
 
-# Configure source
 configure_source() {
     exec 3>&1
     VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
@@ -196,7 +175,6 @@ configure_source() {
     exec 3>&-
 
     if [ $? -ne 0 ]; then
-        # Cancel or ESC - return without saving
         return
     fi
 
@@ -213,7 +191,6 @@ configure_source() {
         --msgbox "SOURCE configuration saved!\n\nHost: $SRC_HOST:$SRC_PORT\nDB: $SRC_DB" 9 50
 }
 
-# Configure destination
 configure_destination() {
     exec 3>&1
     VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
@@ -228,7 +205,6 @@ configure_destination() {
     exec 3>&-
 
     if [ $? -ne 0 ]; then
-        # Cancel or ESC - return without saving
         return
     fi
 
@@ -245,7 +221,6 @@ configure_destination() {
         --msgbox "DESTINATION configuration saved!\n\nHost: $DST_HOST:$DST_PORT\nDB: $DST_DB" 9 50
 }
 
-# Configure dump file
 configure_dump_file() {
     DUMP_DIR=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Dump Directory" \
@@ -253,11 +228,9 @@ configure_dump_file() {
         3>&1 1>&2 2>&3)
 
     if [ $? -ne 0 ]; then
-        # Cancel or ESC - return without saving
         return
     fi
     
-    # Create directory if it doesn't exist
     mkdir -p "$DUMP_DIR" 2>/dev/null
     
     save_config
@@ -266,9 +239,7 @@ configure_dump_file() {
         --msgbox "Dump directory configured:\n\n$DUMP_DIR\n\nFiles will be named: <db-engine>-<timestamp>.dump" 10 70
 }
 
-# Complete step-by-step configuration
 configure_full() {
-    # Choose database type
     DB_TYPE=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "[1/4] Database Type" \
         --menu "Select the type:" 12 50 3 \
@@ -282,12 +253,10 @@ configure_full() {
     2) DB_TYPE="postgres" ;;
     3) DB_TYPE="sqlserver" ;;
     *)
-        # Cancel or ESC - cancel complete setup
         return
         ;;
     esac
 
-    # Configure source
     exec 3>&1
     VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "[2/4] Configuration - SOURCE" \
@@ -301,7 +270,6 @@ configure_full() {
     exec 3>&-
 
     if [ $? -ne 0 ]; then
-        # Cancel or ESC - cancel complete setup
         return
     fi
 
@@ -312,7 +280,6 @@ configure_full() {
     SRC_PASS="${arr[3]}"
     SRC_DB="${arr[4]}"
 
-    # Configure destination
     exec 3>&1
     VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "[3/4] Configuration - DESTINATION" \
@@ -326,7 +293,6 @@ configure_full() {
     exec 3>&-
 
     if [ $? -ne 0 ]; then
-        # Cancel or ESC - cancel complete setup
         return
     fi
 
@@ -337,18 +303,15 @@ configure_full() {
     DST_PASS="${arr[3]}"
     DST_DB="${arr[4]}"
 
-    # Dump directory
     DUMP_DIR=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "[4/4] Dump Directory" \
         --inputbox "Directory for dump files:\n\nFiles will be auto-named:\n<db-engine>-<timestamp>.txt" 12 70 "${DUMP_DIR:-$HOME/Downloads}" \
         3>&1 1>&2 2>&3)
 
     if [ $? -ne 0 ]; then
-        # Cancel or ESC - cancel complete setup
         return
     fi
     
-    # Create directory if it doesn't exist
     mkdir -p "$DUMP_DIR" 2>/dev/null
 
     save_config
@@ -358,7 +321,6 @@ configure_full() {
         --msgbox "All settings saved!\n\nType: $DB_TYPE\n\nSource: $SRC_HOST:$SRC_PORT/$SRC_DB\nDestination: $DST_HOST:$DST_PORT/$DST_DB\n\nDump Dir: $DUMP_DIR\nFiles: <db-engine>-<timestamp>.dump" 16 70
 }
 
-# View configuration
 view_config() {
     if ! load_config; then
         $DIALOG --clear --backtitle "DB Migration Manager" \
@@ -367,7 +329,6 @@ view_config() {
         return
     fi
     
-    # Show configured or not configured for dump directory
     local dump_dir_display="${DUMP_DIR:-[Not configured]}"
 
     $DIALOG --clear --backtitle "DB Migration Manager" \
@@ -375,7 +336,6 @@ view_config() {
         --msgbox "Type: $DB_TYPE\n\nSource:\n  Host: $SRC_HOST:$SRC_PORT\n  User: $SRC_USER\n  DB: $SRC_DB\n\nDestination:\n  Host: $DST_HOST:$DST_PORT\n  User: $DST_USER\n  DB: $DST_DB\n\nDump Directory: $dump_dir_display\nFile naming: <db-engine>-<timestamp>.txt" 20 60
 }
 
-# Perform dump
 perform_dump() {
     if ! load_config; then
         $DIALOG --clear --backtitle "DB Migration Manager" \
@@ -384,7 +344,6 @@ perform_dump() {
         return
     fi
     
-    # Validate DUMP_DIR is configured
     if [ -z "$DUMP_DIR" ]; then
         $DIALOG --clear --backtitle "DB Migration Manager" \
             --title "Error" \
@@ -392,7 +351,6 @@ perform_dump() {
         return
     fi
     
-    # Ensure directory exists
     ensure_dir "$DUMP_DIR"
 
     clear
@@ -400,7 +358,6 @@ perform_dump() {
     log_info "🔄 Starting dump of $SRC_DB..."
     ensure_docker_network "$DOCKER_NETWORK"
     
-    # Generate dump filename automatically
     DUMP_FILENAME=$(generate_dump_filename "$DB_TYPE")
     DUMP_FILE="$DUMP_DIR/$DUMP_FILENAME"
     log_info "📄 File: $DUMP_FILENAME"
@@ -421,7 +378,6 @@ perform_dump() {
     read -p "Press ENTER to continue..."
 }
 
-# Perform load
 perform_load() {
     if ! load_config; then
         $DIALOG --clear --backtitle "DB Migration Manager" \
@@ -430,7 +386,6 @@ perform_load() {
         return
     fi
     
-    # Validate DUMP_DIR is configured
     if [ -z "$DUMP_DIR" ]; then
         $DIALOG --clear --backtitle "DB Migration Manager" \
             --title "Error" \
@@ -438,14 +393,12 @@ perform_load() {
         return
     fi
     
-    # Ask user to select dump file
     SELECTED_DUMP=$($DIALOG --clear --backtitle "DB Migration Manager" \
         --title "Select Dump File" \
         --inputbox "Enter the full path to the dump file:" 8 70 "${DUMP_DIR}/$(ls -t "$DUMP_DIR"/*.txt 2>/dev/null | head -1 | xargs basename 2>/dev/null)" \
         3>&1 1>&2 2>&3)
     
     if [ $? -ne 0 ]; then
-        # Cancel or ESC
         return
     fi
     
@@ -478,7 +431,6 @@ perform_load() {
     read -p "Press ENTER to continue..."
 }
 
-# Perform migration
 perform_migrate() {
     if ! load_config; then
         $DIALOG --clear --backtitle "DB Migration Manager" \
@@ -487,7 +439,6 @@ perform_migrate() {
         return
     fi
     
-    # Validate DUMP_DIR is configured
     if [ -z "$DUMP_DIR" ]; then
         $DIALOG --clear --backtitle "DB Migration Manager" \
             --title "Error" \
@@ -495,7 +446,6 @@ perform_migrate() {
         return
     fi
     
-    # Ensure directory exists
     ensure_dir "$DUMP_DIR"
 
     $DIALOG --clear --backtitle "DB Migration Manager" \
@@ -511,12 +461,10 @@ perform_migrate() {
     log_info "🔄 Starting migration from $SRC_DB to $DST_DB..."
     ensure_docker_network "$DOCKER_NETWORK"
     
-    # Generate dump filename automatically
     DUMP_FILENAME=$(generate_dump_filename "$DB_TYPE")
     DUMP_FILE="$DUMP_DIR/$DUMP_FILENAME"
     log_info "📄 File: $DUMP_FILENAME"
 
-    # Dump
     echo ""
     log_step "Step 1/2: Dump..."
     case $DB_TYPE in
@@ -531,7 +479,6 @@ perform_migrate() {
         ;;
     esac
 
-    # Load
     echo ""
     log_step "Step 2/2: Load..."
     case $DB_TYPE in
@@ -551,7 +498,6 @@ perform_migrate() {
     read -p "Press ENTER to continue..."
 }
 
-# Main
 check_dialog
 check_docker
 load_config || true

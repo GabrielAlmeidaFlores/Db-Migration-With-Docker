@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# PostgreSQL Dump usando Docker
-# Note: Not using 'set -e' to handle errors gracefully
-
 SRC_HOST=$1
 SRC_PORT=$2
 SRC_USER=$3
@@ -16,7 +13,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Funções de log
 log_info() { echo -e "${BLUE}ℹ️  $*${NC}"; }
 log_success() { echo -e "${GREEN}✅ $*${NC}"; }
 log_error() { echo -e "${RED}❌ $*${NC}"; }
@@ -32,9 +28,7 @@ fi
 
 log_progress "Dumping $SRC_DB from $SRC_HOST:$SRC_PORT..."
 
-# Use Docker to run pg_dump (version 16 for compatibility)
 if [ -n "$RUNNING_IN_DOCKER" ]; then
-    # Rodando em Docker: criar dump localmente
     docker run --rm \
         --network host \
         -e PGPASSWORD="$SRC_PASS" \
@@ -47,7 +41,6 @@ if [ -n "$RUNNING_IN_DOCKER" ]; then
         -F c \
         --verbose > "$DUMP_FILE"
 else
-    # Rodando direto no host: usar volume mount
     docker run --rm \
         --network host \
         -e PGPASSWORD="$SRC_PASS" \

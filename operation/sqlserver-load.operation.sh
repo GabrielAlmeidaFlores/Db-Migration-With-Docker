@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# SQL Server Load (Restore) usando Docker
-# Note: Not using 'set -e' to handle errors gracefully
-
 DST_HOST=$1
 DST_PORT=$2
 DST_USER=$3
@@ -16,7 +13,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Funções de log
 log_info() { echo -e "${BLUE}ℹ️  $*${NC}"; }
 log_success() { echo -e "${GREEN}✅ $*${NC}"; }
 log_error() { echo -e "${RED}❌ $*${NC}"; }
@@ -25,7 +21,6 @@ log_progress() { echo -e "${YELLOW}⏳ $*${NC}"; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
 
-# Quando roda no Docker, usar caminho do host real (para Docker-in-Docker)
 if [ -n "$RUNNING_IN_DOCKER" ] && [ -n "$HOST_WORKSPACE_DIR" ]; then
     SQLPACKAGE_DIR="$HOST_WORKSPACE_DIR/dependencies/sqlpackage"
 else
@@ -37,14 +32,12 @@ if [ ! -f "$DUMP_FILE" ]; then
     exit 1
 fi
 
-# Não verificar se existe quando em Docker-in-Docker, porque o caminho está no host
 if [ -z "$RUNNING_IN_DOCKER" ] && [ ! -d "$SQLPACKAGE_DIR" ]; then
     log_error "sqlpackage directory not found at: $SQLPACKAGE_DIR"
     log_info "Please ensure dependencies/sqlpackage/ directory exists"
     exit 1
 fi
 
-# Ler caminho do BACPAC do arquivo de referência
 BACPAC_FILE=$(cat "$DUMP_FILE")
 
 if [ -z "$BACPAC_FILE" ] || [ ! -f "$BACPAC_FILE" ]; then
@@ -54,12 +47,10 @@ fi
 
 log_progress "Importing $DST_DB on $DST_HOST:$DST_PORT from BACPAC..."
 
-# sqlpackage Import restaura o BACPAC usando Docker
 BACPAC_DIR="$(dirname "$BACPAC_FILE")"
 BACPAC_BASENAME="$(basename "$BACPAC_FILE")"
 
 if [ -n "$RUNNING_IN_DOCKER" ]; then
-    # Rodando em Docker: usar volume Docker compartilhado
     docker run --rm \
         --network host \
         -v "$SQLPACKAGE_DIR:/sqlpackage:ro" \
@@ -71,7 +62,6 @@ if [ -n "$RUNNING_IN_DOCKER" ]; then
         /p:DatabaseEdition=Standard \
         /p:DatabaseServiceObjective=S0
 else
-    # Rodando direto no host: montar diretório do host
     docker run --rm \
         --network host \
         -v "$SQLPACKAGE_DIR:/sqlpackage:ro" \

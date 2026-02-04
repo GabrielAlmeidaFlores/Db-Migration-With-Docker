@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# MySQL Dump usando Docker
-# Note: Not using 'set -e' to handle errors gracefully
-
 SRC_HOST=$1
 SRC_PORT=$2
 SRC_USER=$3
@@ -16,7 +13,6 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Funções de log
 log_info() { echo -e "${BLUE}ℹ️  $*${NC}"; }
 log_success() { echo -e "${GREEN}✅ $*${NC}"; }
 log_error() { echo -e "${RED}❌ $*${NC}"; }
@@ -32,9 +28,7 @@ fi
 
 log_progress "Dumping $SRC_DB from $SRC_HOST:$SRC_PORT..."
 
-# Verificar se está rodando dentro do Docker
 if [ -n "$RUNNING_IN_DOCKER" ]; then
-    # Rodando em Docker: criar dump localmente e copiar do container temporário
     docker run --rm \
         --network host \
         -e MYSQL_PWD="$SRC_PASS" \
@@ -50,7 +44,6 @@ if [ -n "$RUNNING_IN_DOCKER" ]; then
         --events \
         $SRC_DB" > "$DUMP_FILE"
 else
-    # Rodando direto no host: usar volume mount
     docker run --rm \
         --network host \
         -e MYSQL_PWD="$SRC_PASS" \
@@ -73,7 +66,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Verificar se o arquivo foi criado
 if [ ! -f "$DUMP_FILE" ]; then
     log_error "Dump file was not created."
     exit 1

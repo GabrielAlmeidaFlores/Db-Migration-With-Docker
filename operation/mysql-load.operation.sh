@@ -59,17 +59,19 @@ if [ -n "$RUNNING_IN_DOCKER" ]; then
         "$DST_DB"
 else
     # Rodando direto no host: usar volume mount
+    DUMP_DIR="$(dirname "$DUMP_FILE")"
+    DUMP_BASENAME="$(basename "$DUMP_FILE")"
     docker run --rm \
         --network host \
         -e MYSQL_PWD="$DST_PASS" \
-        -v "$DUMP_FILE:/backup/dump.sql:ro" \
+        -v "$DUMP_DIR:/backup:ro" \
         mysql:8.0 \
-        mysql \
-        -h "$DST_HOST" \
-        -P "$DST_PORT" \
-        -u "$DST_USER" \
+        sh -c "mysql \
+        -h $DST_HOST \
+        -P $DST_PORT \
+        -u $DST_USER \
         --verbose \
-        "$DST_DB" </backup/dump.sql
+        $DST_DB </backup/$DUMP_BASENAME"
 fi
 
 if [ $? -ne 0 ]; then

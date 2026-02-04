@@ -50,10 +50,12 @@ if [ -n "$RUNNING_IN_DOCKER" ]; then
         --no-acl
 else
     # Rodando direto no host: usar volume mount
+    DUMP_DIR="$(dirname "$DUMP_FILE")"
+    DUMP_BASENAME="$(basename "$DUMP_FILE")"
     docker run --rm \
         --network host \
         -e PGPASSWORD="$DST_PASS" \
-        -v "$DUMP_FILE:/backup/dump.custom:ro" \
+        -v "$DUMP_DIR:/backup:ro" \
         postgres:16-alpine \
         pg_restore \
         -h "$DST_HOST" \
@@ -65,7 +67,7 @@ else
         --if-exists \
         --no-owner \
         --no-acl \
-        /backup/dump.custom
+        "/backup/$DUMP_BASENAME"
 fi
 
 if [ $? -ne 0 ]; then

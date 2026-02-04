@@ -23,38 +23,59 @@ log_error() { echo -e "${RED}❌ $*${NC}"; }
 log_warning() { echo -e "${YELLOW}⚠️  $*${NC}"; }
 log_progress() { echo -e "${YELLOW}⏳ $*${NC}"; }
 
-# Criar diretório de destino se não existir
-mkdir -p "$(dirname "$DUMP_FILE")"
+DUMP_DIR="$(dirname "$DUMP_FILE")"
+DUMP_BASENAME="$(basename "$DUMP_FILE")"
+
+if [ ! -d "$DUMP_DIR" ]; then
+    log_error "Dump directory does not exist: $DUMP_DIR"
+    exit 1
+fi
 
 log_progress "Backing up $SRC_DB from $SRC_HOST:$SRC_PORT..."
 
 # Para SQL Server, usamos sqlcmd para criar um backup
-BACKUP_NAME="$(basename "$DUMP_FILE" .bak).bak"
+# Nota: SQL Server BACKUP DATABASE cria arquivo .bak no servidor remoto
+# Não é possível redirecionar para stdout como MySQL/PostgreSQL
+BACKUP_NAME="${DUMP_BASENAME%.txt}.bak"
 BACKUP_PATH="/var/opt/mssql/data/$BACKUP_NAME"
 
-# Executar backup no servidor
-docker run --rm \
-    --network host \
-    mcr.microsoft.com/mssql-tools \
-    /opt/mssql-tools/bin/sqlcmd \
-    -S "$SRC_HOST,$SRC_PORT" \
-    -U "$SRC_USER" \
-    -P "$SRC_PASS" \
-    -Q "BACKUP DATABASE [$SRC_DB] TO DISK = N'$BACKUP_PATH' WITH FORMAT, INIT, NAME = N'$SRC_DB-Full', SKIP, NOREWIND, NOUNLOAD, STATS = 1"
-
-if [ $? -ne 0 ]; then
-    log_error "Backup failed."
-    exit 1
+if [ -n "$RUNNING_IN_DOCKER" ]; then
+    # Rodando em Docker: backup fica no servidor remoto
+    docker run --rm \
+        --network host \
+        mcr.microsoft.com/mssql-tools \
+        /opt/mssql-tools/bin/sqlcmd \
+        -S "$SRC_HOST,$SRC_PORT" \
+        -U "$SRC_USER" \
+        -P "$SRC_PASS" \
+        -Q "BACKUP DATABASE [$SRC_DB] TO DISK = N'$BACKUP_PATH' WITH FORMAT, INIT, NAME = N'$SRC_DB-Full', SKIP, NOREWIND, NOUNLOAD, STATS = 1"
+    
+    if [ $? -ne 0 ]; then
+        log_error "Backup failed."
+        exit 1
+    fi
+    
+    # Salvar referência do caminho remoto
+    echo "$BACKUP_PATH" > "$DUMP_FILE"
+else
+    # Rodando direto no host: backup fica no servidor remoto
+    docker run --rm \
+        --network host \
+        mcr.microsoft.com/mssql-tools \
+        /opt/mssql-tools/bin/sqlcmd \
+        -S "$SRC_HOST,$SRC_PORT" \
+        -U "$SRC_USER" \
+        -P "$SRC_PASS" \
+        -Q "BACKUP DATABASE [$SRC_DB] TO DISK = N'$BACKUP_PATH' WITH FORMAT, INIT, NAME = N'$SRC_DB-Full', SKIP, NOREWIND, NOUNLOAD, STATS = 1"
+    
+    if [ $? -ne 0 ]; then
+        log_error "Backup failed."
+        exit 1
+    fi
+    
+    # Salvar referência do caminho remoto
+    echo "$BACKUP_PATH" > "$DUMP_FILE"
 fi
 
-log_info "Downloading backup file..."
-
-# Nota: Em produção, você precisaria copiar o arquivo do servidor SQL Server
-# Esta é uma implementação simplificada
-log_warning "Nota: O backup foi criado no servidor em: $BACKUP_PATH"
-log_warning "Você precisará copiar manualmente ou usar ferramentas adicionais."
-
-# Criar um arquivo de referência
-echo "Backup criado em: $SRC_HOST:$BACKUP_PATH" >"$DUMP_FILE.info"
-
-log_success "Backup successful: $BACKUP_PATH"
+FILE_SIZE=$(du -h "$DUMP_FILE" 2>/dev/null | cut -f1 || echo "reference")
+log_success "Backup successful: $DUMP_FILE ($FILE_SIZE) [Server: $BACKUP_PATH]"

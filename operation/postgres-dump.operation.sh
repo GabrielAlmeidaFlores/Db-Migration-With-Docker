@@ -22,8 +22,13 @@ log_success() { echo -e "${GREEN}✅ $*${NC}"; }
 log_error() { echo -e "${RED}❌ $*${NC}"; }
 log_progress() { echo -e "${YELLOW}⏳ $*${NC}"; }
 
-# Criar diretório de destino se não existir
-mkdir -p "$(dirname "$DUMP_FILE")"
+DUMP_DIR="$(dirname "$DUMP_FILE")"
+DUMP_BASENAME="$(basename "$DUMP_FILE")"
+
+if [ ! -d "$DUMP_DIR" ]; then
+    log_error "Dump directory does not exist: $DUMP_DIR"
+    exit 1
+fi
 
 log_progress "Dumping $SRC_DB from $SRC_HOST:$SRC_PORT..."
 
@@ -46,7 +51,7 @@ else
     docker run --rm \
         --network host \
         -e PGPASSWORD="$SRC_PASS" \
-        -v "$(dirname "$DUMP_FILE"):/backup" \
+        -v "$DUMP_DIR:/backup" \
         postgres:16-alpine \
         pg_dump \
         -h "$SRC_HOST" \
@@ -55,7 +60,7 @@ else
         -d "$SRC_DB" \
         -F c \
         --verbose \
-        -f "/backup/$(basename "$DUMP_FILE")"
+        -f "/backup/$DUMP_BASENAME"
 fi
 
 if [ $? -ne 0 ]; then

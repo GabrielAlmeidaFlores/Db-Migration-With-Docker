@@ -22,10 +22,13 @@ log_success() { echo -e "${GREEN}✅ $*${NC}"; }
 log_error() { echo -e "${RED}❌ $*${NC}"; }
 log_progress() { echo -e "${YELLOW}⏳ $*${NC}"; }
 
-# Criar diretório de destino se não existir
 DUMP_DIR="$(dirname "$DUMP_FILE")"
 DUMP_BASENAME="$(basename "$DUMP_FILE")"
-mkdir -p "$DUMP_DIR"
+
+if [ ! -d "$DUMP_DIR" ]; then
+    log_error "Dump directory does not exist: $DUMP_DIR"
+    exit 1
+fi
 
 log_progress "Dumping $SRC_DB from $SRC_HOST:$SRC_PORT..."
 

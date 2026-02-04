@@ -67,14 +67,17 @@ echo ""
 # - Interactive terminal with UTF-8 support
 # - Docker socket mounted (for Docker-in-Docker)
 # - Config volume for persistent configuration
+# - SQL Server dependencies (sqlpackage)
 # - Auto-remove after exit
 docker run -it --rm \
     --name "$CONTAINER_NAME" \
     -e LANG=C.UTF-8 \
     -e LC_ALL=C.UTF-8 \
     -e RUNNING_IN_DOCKER=true \
+    -e HOST_WORKSPACE_DIR="$SCRIPT_DIR" \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$CONFIG_PATH:/app/.config" \
+    -v "$SCRIPT_DIR/dependencies:/host_dependencies:ro" \
     --network host \
     "$IMAGE_NAME"
 

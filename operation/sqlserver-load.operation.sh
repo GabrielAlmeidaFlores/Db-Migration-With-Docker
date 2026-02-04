@@ -23,76 +23,56 @@ log_error() { echo -e "${RED}❌ $*${NC}"; }
 log_warning() { echo -e "${YELLOW}⚠️  $*${NC}"; }
 log_progress() { echo -e "${YELLOW}⏳ $*${NC}"; }
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
+
+# Quando roda no Docker, usar caminho do host real (para Docker-in-Docker)
+if [ -n "$RUNNING_IN_DOCKER" ] && [ -n "$HOST_WORKSPACE_DIR" ]; then
+    SQLPACKAGE_DIR="$HOST_WORKSPACE_DIR/dependencies/sqlpackage"
+else
+    SQLPACKAGE_DIR="$SCRIPT_DIR/dependencies/sqlpackage"
+fi
+
 if [ ! -f "$DUMP_FILE" ]; then
     log_error "Dump file not found: $DUMP_FILE"
     exit 1
 fi
 
-# Ler caminho do backup do arquivo de referência
-BACKUP_PATH=$(cat "$DUMP_FILE")
-
-if [ -z "$BACKUP_PATH" ]; then
-    log_error "Invalid backup reference file"
+# Não verificar se existe quando em Docker-in-Docker, porque o caminho está no host
+if [ -z "$RUNNING_IN_DOCKER" ] && [ ! -d "$SQLPACKAGE_DIR" ]; then
+    log_error "sqlpackage directory not found at: $SQLPACKAGE_DIR"
+    log_info "Please ensure dependencies/sqlpackage/ directory exists"
     exit 1
 fi
 
-log_progress "Restoring $DST_DB on $DST_HOST:$DST_PORT..."
+# Ler caminho do BACPAC do arquivo de referência
+BACPAC_FILE=$(cat "$DUMP_FILE")
 
-# Obter informações dos arquivos lógicos do backup
-log_info "Reading backup file information..."
-FILELISTONLY_OUTPUT=$(docker run --rm \
+if [ -z "$BACPAC_FILE" ] || [ ! -f "$BACPAC_FILE" ]; then
+    log_error "BACPAC file not found: $BACPAC_FILE"
+    exit 1
+fi
+
+log_progress "Importing $DST_DB on $DST_HOST:$DST_PORT from BACPAC..."
+
+# sqlpackage Import restaura o BACPAC usando Docker
+BACPAC_DIR="$(dirname "$BACPAC_FILE")"
+BACPAC_BASENAME="$(basename "$BACPAC_FILE")"
+
+docker run --rm \
     --network host \
-    mcr.microsoft.com/mssql-tools \
-    /opt/mssql-tools/bin/sqlcmd \
-    -S "$DST_HOST,$DST_PORT" \
-    -U "$DST_USER" \
-    -P "$DST_PASS" \
-    -W \
-    -h -1 \
-    -s "," \
-    -Q "SET NOCOUNT ON; RESTORE FILELISTONLY FROM DISK = N'$BACKUP_PATH'" 2>&1)
+    -v "$SQLPACKAGE_DIR:/sqlpackage:ro" \
+    -v "$BACPAC_DIR:/backup:ro" \
+    mcr.microsoft.com/dotnet/runtime:8.0 \
+    dotnet /sqlpackage/sqlpackage.dll /Action:Import \
+    /TargetConnectionString:"Server=$DST_HOST,$DST_PORT;Database=$DST_DB;User Id=$DST_USER;Password=$DST_PASS;Encrypt=False;TrustServerCertificate=True;" \
+    /SourceFile:"/backup/$BACPAC_BASENAME" \
+    /p:DatabaseEdition=Standard \
+    /p:DatabaseServiceObjective=S0
 
-if [ $? -ne 0 ]; then
-    log_error "Failed to read backup file information"
-    echo "$FILELISTONLY_OUTPUT"
-    exit 1
-fi
+IMPORT_EXIT=$?
 
-# Extrair nomes dos arquivos lógicos (primeira coluna do resultado)
-# Formato: LogicalName,PhysicalName,Type,...
-# Type está na terceira coluna: D=Data, L=Log
-DATA_LOGICAL=$(echo "$FILELISTONLY_OUTPUT" | grep -v "^$" | awk -F',' '$3 == "D" {print $1; exit}' | tr -d ' ')
-LOG_LOGICAL=$(echo "$FILELISTONLY_OUTPUT" | grep -v "^$" | awk -F',' '$3 == "L" {print $1; exit}' | tr -d ' ')
-
-if [ -z "$DATA_LOGICAL" ] || [ -z "$LOG_LOGICAL" ]; then
-    log_error "Could not determine logical file names from backup"
-    log_info "FILELISTONLY output:"
-    echo "$FILELISTONLY_OUTPUT"
-    exit 1
-fi
-
-log_info "Data file: $DATA_LOGICAL -> ${DST_DB}.mdf"
-log_info "Log file: $LOG_LOGICAL -> ${DST_DB}_log.ldf"
-
-# Definir novos caminhos físicos para o banco de destino
-DATA_FILE="/var/opt/mssql/data/${DST_DB}.mdf"
-LOG_FILE="/var/opt/mssql/data/${DST_DB}_log.ldf"
-
-# Restaurar database com MOVE
-RESTORE_OUTPUT=$(docker run --rm \
-    --network host \
-    mcr.microsoft.com/mssql-tools \
-    /opt/mssql-tools/bin/sqlcmd \
-    -S "$DST_HOST,$DST_PORT" \
-    -U "$DST_USER" \
-    -P "$DST_PASS" \
-    -Q "RESTORE DATABASE [$DST_DB] FROM DISK = N'$BACKUP_PATH' WITH MOVE N'$DATA_LOGICAL' TO N'$DATA_FILE', MOVE N'$LOG_LOGICAL' TO N'$LOG_FILE', REPLACE, STATS = 10" 2>&1)
-
-RESTORE_EXIT=$?
-echo "$RESTORE_OUTPUT"
-
-if [ $RESTORE_EXIT -ne 0 ] || echo "$RESTORE_OUTPUT" | grep -qi "error\|failed\|terminating abnormally"; then
-    log_error "Restore failed."
+if [ $IMPORT_EXIT -ne 0 ]; then
+    log_error "Import failed."
     exit 1
 fi
 

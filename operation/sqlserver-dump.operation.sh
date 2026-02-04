@@ -54,18 +54,18 @@ log_progress "Exporting $SRC_DB from $SRC_HOST:$SRC_PORT to BACPAC format..."
 # sqlpackage Export cria arquivo BACPAC portável
 # Usar Docker com .NET runtime para executar sqlpackage
 if [ -n "$RUNNING_IN_DOCKER" ]; then
-    # Rodando em Docker: montar dependências e executar
+    # Rodando em Docker: usar volume Docker compartilhado
     docker run --rm \
         --network host \
         -v "$SQLPACKAGE_DIR:/sqlpackage:ro" \
-        -v "$DUMP_DIR:/backup" \
+        -v "$DUMPS_VOLUME:/backup" \
         mcr.microsoft.com/dotnet/runtime:8.0 \
         dotnet /sqlpackage/sqlpackage.dll /Action:Export \
         /SourceConnectionString:"Server=$SRC_HOST,$SRC_PORT;Database=$SRC_DB;User Id=$SRC_USER;Password=$SRC_PASS;Encrypt=False;TrustServerCertificate=True;" \
         /TargetFile:"/backup/$(basename "$BACPAC_FILE")" \
         /p:VerifyExtraction=False
 else
-    # Rodando direto no host: montar dependências e executar
+    # Rodando direto no host: montar diretório do host
     docker run --rm \
         --network host \
         -v "$SQLPACKAGE_DIR:/sqlpackage:ro" \
@@ -84,13 +84,25 @@ if [ $? -ne 0 ]; then
 fi
 
 # Verificar se o arquivo foi criado
-if [ ! -f "$BACPAC_FILE" ]; then
-    log_error "BACPAC file was not created."
-    exit 1
+if [ -n "$RUNNING_IN_DOCKER" ]; then
+    # Em modo Docker, verificar no caminho do volume
+    ACTUAL_BACPAC_PATH="/dumps/$(basename "$BACPAC_FILE")"
+    if [ ! -f "$ACTUAL_BACPAC_PATH" ]; then
+        log_error "BACPAC file was not created."
+        exit 1
+    fi
+    # Salvar o caminho correto (no volume /dumps)
+    echo "$ACTUAL_BACPAC_PATH" > "$DUMP_FILE"
+    FILE_SIZE=$(du -h "$ACTUAL_BACPAC_PATH" | cut -f1)
+else
+    # Em modo host, verificar no caminho original
+    if [ ! -f "$BACPAC_FILE" ]; then
+        log_error "BACPAC file was not created."
+        exit 1
+    fi
+    # Salvar o caminho original
+    echo "$BACPAC_FILE" > "$DUMP_FILE"
+    FILE_SIZE=$(du -h "$BACPAC_FILE" | cut -f1)
 fi
 
-# Criar arquivo de referência com caminho do BACPAC
-echo "$BACPAC_FILE" > "$DUMP_FILE"
-
-FILE_SIZE=$(du -h "$BACPAC_FILE" | cut -f1)
-log_success "Dump successful: $BACPAC_FILE ($FILE_SIZE)"
+log_success "Dump successful: $(basename "$BACPAC_FILE") ($FILE_SIZE)"

@@ -37,6 +37,9 @@ fi
 log_info "Starting DB Migration Manager..."
 echo ""
 
+# Named volume for dumps (auto-created if doesn't exist)
+DUMPS_VOLUME="db-migration-dumps"
+
 # IMPORTANT: Create .config file BEFORE mounting
 # If it doesn't exist, Docker will create a DIRECTORY instead of a file
 if [ ! -f "$SCRIPT_DIR/.config" ]; then
@@ -58,6 +61,7 @@ fi
 # - Docker socket mounted (for Docker-in-Docker)
 # - Config volume for persistent configuration
 # - SQL Server dependencies (sqlpackage)
+# - Named volume for dumps (shared between containers)
 # - Auto-remove after exit
 docker run -it --rm \
     --name "$CONTAINER_NAME" \
@@ -65,9 +69,11 @@ docker run -it --rm \
     -e LC_ALL=C.UTF-8 \
     -e RUNNING_IN_DOCKER=true \
     -e HOST_WORKSPACE_DIR="$SCRIPT_DIR" \
+    -e DUMPS_VOLUME="$DUMPS_VOLUME" \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$SCRIPT_DIR/.config:/app/.config" \
     -v "$SCRIPT_DIR/dependencies:/host_dependencies:ro" \
+    -v "$DUMPS_VOLUME:/dumps" \
     --network host \
     "$IMAGE_NAME"
 

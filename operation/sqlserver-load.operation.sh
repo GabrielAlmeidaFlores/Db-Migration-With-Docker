@@ -58,16 +58,31 @@ log_progress "Importing $DST_DB on $DST_HOST:$DST_PORT from BACPAC..."
 BACPAC_DIR="$(dirname "$BACPAC_FILE")"
 BACPAC_BASENAME="$(basename "$BACPAC_FILE")"
 
-docker run --rm \
-    --network host \
-    -v "$SQLPACKAGE_DIR:/sqlpackage:ro" \
-    -v "$BACPAC_DIR:/backup:ro" \
-    mcr.microsoft.com/dotnet/runtime:8.0 \
-    dotnet /sqlpackage/sqlpackage.dll /Action:Import \
-    /TargetConnectionString:"Server=$DST_HOST,$DST_PORT;Database=$DST_DB;User Id=$DST_USER;Password=$DST_PASS;Encrypt=False;TrustServerCertificate=True;" \
-    /SourceFile:"/backup/$BACPAC_BASENAME" \
-    /p:DatabaseEdition=Standard \
-    /p:DatabaseServiceObjective=S0
+if [ -n "$RUNNING_IN_DOCKER" ]; then
+    # Rodando em Docker: usar volume Docker compartilhado
+    docker run --rm \
+        --network host \
+        -v "$SQLPACKAGE_DIR:/sqlpackage:ro" \
+        -v "$DUMPS_VOLUME:/backup:ro" \
+        mcr.microsoft.com/dotnet/runtime:8.0 \
+        dotnet /sqlpackage/sqlpackage.dll /Action:Import \
+        /TargetConnectionString:"Server=$DST_HOST,$DST_PORT;Database=$DST_DB;User Id=$DST_USER;Password=$DST_PASS;Encrypt=False;TrustServerCertificate=True;" \
+        /SourceFile:"/backup/$BACPAC_BASENAME" \
+        /p:DatabaseEdition=Standard \
+        /p:DatabaseServiceObjective=S0
+else
+    # Rodando direto no host: montar diretório do host
+    docker run --rm \
+        --network host \
+        -v "$SQLPACKAGE_DIR:/sqlpackage:ro" \
+        -v "$BACPAC_DIR:/backup:ro" \
+        mcr.microsoft.com/dotnet/runtime:8.0 \
+        dotnet /sqlpackage/sqlpackage.dll /Action:Import \
+        /TargetConnectionString:"Server=$DST_HOST,$DST_PORT;Database=$DST_DB;User Id=$DST_USER;Password=$DST_PASS;Encrypt=False;TrustServerCertificate=True;" \
+        /SourceFile:"/backup/$BACPAC_BASENAME" \
+        /p:DatabaseEdition=Standard \
+        /p:DatabaseServiceObjective=S0
+fi
 
 IMPORT_EXIT=$?
 

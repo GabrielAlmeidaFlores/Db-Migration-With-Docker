@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/.config"
@@ -345,12 +345,35 @@ perform_load() {
         return
     fi
     
-    SELECTED_DUMP=$($DIALOG --clear --backtitle "DB Migration Manager" \
+    if [ ! -d "$DUMP_DIR" ] || [ -z "$(ls -A "$DUMP_DIR"/*.txt 2>/dev/null)" ]; then
+        $DIALOG --clear --backtitle "DB Migration Manager" \
+            --title "Error" \
+            --msgbox "No dump files found in $DUMP_DIR" 6 50
+        return
+    fi
+    
+    MENU_OPTIONS=()
+    while IFS= read -r file; do
+        filename=$(basename "$file")
+        filesize=$(du -h "$file" 2>/dev/null | cut -f1)
+        filedate=$(stat -c '%y' "$file" 2>/dev/null | cut -d' ' -f1,2 | cut -d'.' -f1 || stat -f '%Sm' -t '%Y-%m-%d %H:%M:%S' "$file" 2>/dev/null)
+        MENU_OPTIONS+=("$file" "$filename ($filesize) - $filedate")
+    done < <(ls -t "$DUMP_DIR"/*.txt 2>/dev/null)
+    
+    if [ ${#MENU_OPTIONS[@]} -eq 0 ]; then
+        $DIALOG --clear --backtitle "DB Migration Manager" \
+            --title "Error" \
+            --msgbox "No dump files found in $DUMP_DIR" 6 50
+        return
+    fi
+    
+    SELECTED_DUMP=$($DIALOG --clear --backtitle "DB Migration Manager v$VERSION - Docker Mode" \
         --title "Select Dump File" \
-        --inputbox "Enter the full path to the dump file:" 8 70 "${DUMP_DIR}/$(ls -t "$DUMP_DIR"/*.txt 2>/dev/null | head -1 | xargs basename 2>/dev/null)" \
+        --menu "Choose a dump file to import:" 20 80 12 \
+        "${MENU_OPTIONS[@]}" \
         3>&1 1>&2 2>&3)
     
-    if [ $? -ne 0 ]; then
+    if [ $? -ne 0 ] || [ -z "$SELECTED_DUMP" ]; then
         return
     fi
     

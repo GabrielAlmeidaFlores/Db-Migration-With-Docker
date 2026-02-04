@@ -74,9 +74,7 @@ else
         /p:DatabaseServiceObjective=S0
 fi
 
-IMPORT_EXIT=$?
-
-if [ $IMPORT_EXIT -ne 0 ]; then
+if [ $? -ne 0 ]; then
     log_error "Import failed."
     exit 1
 fi

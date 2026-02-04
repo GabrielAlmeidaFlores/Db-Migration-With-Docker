@@ -39,7 +39,6 @@ docker run --rm \
 
 log_progress "Importing into $DST_DB on $DST_HOST:$DST_PORT..."
 
-
 if [ -n "$RUNNING_IN_DOCKER" ]; then
     cat "$DUMP_FILE" | docker run --rm -i \
         --network host \
@@ -52,7 +51,6 @@ if [ -n "$RUNNING_IN_DOCKER" ]; then
         --verbose \
         "$DST_DB"
 else
-
     DUMP_DIR="$(dirname "$DUMP_FILE")"
     DUMP_BASENAME="$(basename "$DUMP_FILE")"
     docker run --rm \

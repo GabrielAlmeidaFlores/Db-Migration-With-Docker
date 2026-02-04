@@ -62,5 +62,10 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+if [ ! -f "$DUMP_FILE" ]; then
+    log_error "Dump file was not created."
+    exit 1
+fi
+
 FILE_SIZE=$(du -h "$DUMP_FILE" | cut -f1)
 log_success "Dump successful: $DUMP_FILE ($FILE_SIZE)"

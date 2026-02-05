@@ -1,11 +1,16 @@
 #!/bin/bash
 
-VERSION="1.1.0"
+###
+# Database Migration Manager - Main Application
+# Interface TUI para gerenciamento de migrations entre bancos de dados
+# Suporta: MySQL, PostgreSQL, SQL Server
+###
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/.config"
 DOCKER_NETWORK="database-migration-network"
 
+source "$SCRIPT_DIR/lib/metadata.lib.sh"
 source "$SCRIPT_DIR/lib/log.lib.sh"
 
 LOCAL_DIALOG="$SCRIPT_DIR/dependencies/dialog/dialog"
@@ -26,16 +31,13 @@ check_dialog() {
     if [ -z "$DIALOG" ]; then
         clear
         log_error "Dialog not available!"
-        echo ""
         log_info "The bundled dialog binary is not compatible with your system."
         log_info "Please install dialog for your system:"
-        echo ""
-        echo "  Ubuntu/Debian:    sudo apt-get install dialog"
-        echo "  RedHat/CentOS:    sudo yum install dialog"
-        echo "  Fedora:           sudo dnf install dialog"
-        echo "  Arch Linux:       sudo pacman -S dialog"
-        echo "  macOS (Homebrew): brew install dialog"
-        echo ""
+        log_info "\tUbuntu/Debian:\tsudo apt-get install dialog"
+        log_info "\tRedHat/CentOS:\tsudo yum install dialog"
+        log_info "\tFedora:\t\tsudo dnf install dialog"
+        log_info "\tArch Linux:\tsudo pacman -S dialog"
+        log_info "\tmacOS (Homebrew):\tbrew install dialog"
         exit 1
     fi
     
@@ -91,7 +93,7 @@ load_config() {
 
 main_menu() {
     while true; do
-        CHOICE=$($DIALOG --clear --backtitle "DB Migration Manager v$VERSION" \
+        CHOICE=$($DIALOG --clear --backtitle "$PROJECT_NAME v$VERSION" \
             --title "Main Menu" \
             --menu "Choose an operation:" 17 60 7 \
             1 "🗄️  Configure Database" \
@@ -124,7 +126,7 @@ configure_database() {
     while true; do
         load_config || true
         
-        CONFIG_MENU=$($DIALOG --clear --backtitle "DB Migration Manager" \
+        CONFIG_MENU=$($DIALOG --clear --backtitle "$PROJECT_NAME" \
             --title "Configuration" \
             --menu "What do you want to configure?" 15 65 6 \
             1 "🗄️  Database Type (Current: ${DB_TYPE:-Not configured})" \
@@ -150,7 +152,7 @@ configure_database() {
 }
 
 configure_db_type() {
-    DB_TYPE=$($DIALOG --clear --backtitle "DB Migration Manager" \
+    DB_TYPE=$($DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "Database Type" \
         --menu "Select the type:" 12 50 3 \
         1 "MySQL/MariaDB" \
@@ -168,14 +170,14 @@ configure_db_type() {
     esac
     
     save_config
-    $DIALOG --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "Success" \
         --msgbox "Database type configured: $DB_TYPE" 6 40
 }
 
 configure_source() {
     exec 3>&1
-    VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
+    VALUES=$($DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "Configuration - SOURCE" \
         --form "Fill in the SOURCE database data:" 15 60 5 \
         "Host:" 1 1 "${SRC_HOST:-localhost}" 1 15 40 0 \
@@ -198,14 +200,14 @@ configure_source() {
     SRC_DB="${arr[4]}"
     
     save_config
-    $DIALOG --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "Success" \
         --msgbox "SOURCE configuration saved!\n\nHost: $SRC_HOST:$SRC_PORT\nDB: $SRC_DB" 9 50
 }
 
 configure_destination() {
     exec 3>&1
-    VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
+    VALUES=$($DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "Configuration - DESTINATION" \
         --form "Fill in the DESTINATION database data:" 15 60 5 \
         "Host:" 1 1 "${DST_HOST:-localhost}" 1 15 40 0 \
@@ -228,13 +230,13 @@ configure_destination() {
     DST_DB="${arr[4]}"
     
     save_config
-    $DIALOG --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "Success" \
         --msgbox "DESTINATION configuration saved!\n\nHost: $DST_HOST:$DST_PORT\nDB: $DST_DB" 9 50
 }
 
 configure_full() {
-    DB_TYPE=$($DIALOG --clear --backtitle "DB Migration Manager" \
+    DB_TYPE=$($DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "[1/4] Database Type" \
         --menu "Select the type:" 12 50 3 \
         1 "MySQL/MariaDB" \
@@ -252,7 +254,7 @@ configure_full() {
     esac
 
     exec 3>&1
-    VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
+    VALUES=$($DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "[2/4] Configuration - SOURCE" \
         --form "Fill in the SOURCE database data:" 15 60 5 \
         "Host:" 1 1 "${SRC_HOST:-localhost}" 1 15 40 0 \
@@ -275,7 +277,7 @@ configure_full() {
     SRC_DB="${arr[4]}"
 
     exec 3>&1
-    VALUES=$($DIALOG --clear --backtitle "DB Migration Manager" \
+    VALUES=$($DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "[3/4] Configuration - DESTINATION" \
         --form "Fill in the DESTINATION database data:" 15 60 5 \
         "Host:" 1 1 "${DST_HOST:-localhost}" 1 15 40 0 \
@@ -299,20 +301,20 @@ configure_full() {
 
     save_config
 
-    $DIALOG --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "✅ Complete Setup" \
         --msgbox "All settings saved!\n\nType: $DB_TYPE\n\nSource: $SRC_HOST:$SRC_PORT/$SRC_DB\nDestination: $DST_HOST:$DST_PORT/$DST_DB\n\nDumps: $DUMP_DIR (auto-named)" 14 70
 }
 
 view_config() {
     if ! load_config; then
-        $DIALOG --clear --backtitle "DB Migration Manager" \
+        $DIALOG --clear --backtitle "$PROJECT_NAME" \
             --title "Error" \
             --msgbox "No configuration found. Please configure first." 6 50
         return
     fi
 
-    $DIALOG --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "Current Configuration" \
         --msgbox "Type: $DB_TYPE\n\nSource:\n  Host: $SRC_HOST:$SRC_PORT\n  User: $SRC_USER\n  DB: $SRC_DB\n\nDestination:\n  Host: $DST_HOST:$DST_PORT\n  User: $DST_USER\n  DB: $DST_DB\n\nDumps: $DUMP_DIR (auto-named files)" 19 60
 }
@@ -322,7 +324,7 @@ manage_dumps() {
         DUMP_COUNT=$(count_dump_files)
         DUMP_SIZE=$(du -sh "$DUMP_DIR" 2>/dev/null | cut -f1)
         
-        DUMP_ACTION=$($DIALOG --clear --backtitle "DB Migration Manager v$VERSION" \
+        DUMP_ACTION=$($DIALOG --clear --backtitle "$PROJECT_NAME v$VERSION" \
             --title "Manage Dumps" \
             --menu "Dumps: $DUMP_COUNT files ($DUMP_SIZE total)\nLocation: $DUMP_DIR" 16 70 5 \
             1 "📋 List All Dumps" \
@@ -345,7 +347,7 @@ manage_dumps() {
 
 list_dumps() {
     if [ ! -d "$DUMP_DIR" ] || [ $(count_dump_files) -eq 0 ]; then
-        $DIALOG --clear --backtitle "DB Migration Manager v$VERSION" \
+        $DIALOG --clear --backtitle "$PROJECT_NAME v$VERSION" \
             --title "Dump Files" \
             --msgbox "No dump files found in $DUMP_DIR" 6 50
         return
@@ -365,13 +367,14 @@ list_dumps() {
         fi
     done < <(list_all_dump_files)
     
-    $DIALOG --clear --backtitle "DB Migration Manager v$VERSION" \
+    $DIALOG --clear --backtitle "$PROJECT_NAME v$VERSION" \
         --title "Available Dump Files" \
+        --scrolltext \
         --msgbox "$DUMP_LIST" 20 70
 }
 
 export_dumps() {
-    EXPORT_PATH=$($DIALOG --clear --backtitle "DB Migration Manager v$VERSION" \
+    EXPORT_PATH=$($DIALOG --clear --backtitle "$PROJECT_NAME v$VERSION" \
         --title "Export Dumps" \
         --inputbox "Enter the HOST path where you want to export dumps:\n\nExample: /home/user/backups or C:/Users/user/backups\n\nThis must be a valid path on your HOST machine.\nThe dumps will be copied there." 14 75 "" \
         3>&1 1>&2 2>&3)
@@ -380,7 +383,7 @@ export_dumps() {
         return
     fi
     
-    EXPORT_TYPE=$($DIALOG --clear --backtitle "DB Migration Manager v$VERSION" \
+    EXPORT_TYPE=$($DIALOG --clear --backtitle "$PROJECT_NAME v$VERSION" \
         --title "Export Method" \
         --menu "Choose export method:" 12 70 2 \
         1 "Copy individual files (preserves structure)" \
@@ -395,7 +398,6 @@ export_dumps() {
     log_header "Export Dumps to Host"
     log_info "📦 Exporting dumps from Docker volume to host..."
     log_info "🎯 Target: $EXPORT_PATH"
-    echo ""
     
     case $EXPORT_TYPE in
     1)
@@ -417,13 +419,12 @@ export_dumps() {
         ;;
     esac
     
-    echo ""
     read -p "Press ENTER to continue..."
 }
 
 delete_dump() {
     if [ ! -d "$DUMP_DIR" ] || [ $(count_dump_files) -eq 0 ]; then
-        $DIALOG --clear --backtitle "DB Migration Manager v$VERSION" \
+        $DIALOG --clear --backtitle "$PROJECT_NAME v$VERSION" \
             --title "Error" \
             --msgbox "No dump files found in $DUMP_DIR" 6 50
         return
@@ -442,7 +443,7 @@ delete_dump() {
         fi
     done < <(list_all_dump_files)
     
-    FILE_TO_DELETE=$($DIALOG --clear --backtitle "DB Migration Manager v$VERSION" \
+    FILE_TO_DELETE=$($DIALOG --clear --backtitle "$PROJECT_NAME v$VERSION" \
         --title "Delete Dump File" \
         --menu "Select a file to delete:" 20 70 12 \
         "${MENU_OPTIONS[@]}" \
@@ -452,7 +453,7 @@ delete_dump() {
         return
     fi
     
-    $DIALOG --clear --backtitle "DB Migration Manager v$VERSION" \
+    $DIALOG --clear --backtitle "$PROJECT_NAME v$VERSION" \
         --title "Confirm Deletion" \
         --yesno "Are you sure you want to delete:\n\n$(basename "$FILE_TO_DELETE")\n\nThis action cannot be undone!" 10 60
     
@@ -466,7 +467,7 @@ delete_dump() {
             fi
         fi
         
-        $DIALOG --clear --backtitle "DB Migration Manager v$VERSION" \
+        $DIALOG --clear --backtitle "$PROJECT_NAME v$VERSION" \
             --title "Success" \
             --msgbox "File deleted successfully!" 6 40
     fi
@@ -490,14 +491,14 @@ volume_info() {
     INFO_TEXT="${INFO_TEXT}    -v \$(pwd):/backup alpine \\\\\n"
     INFO_TEXT="${INFO_TEXT}    tar czf /backup/dumps.tar.gz /dumps"
     
-    $DIALOG --clear --backtitle "DB Migration Manager v$VERSION" \
+    $DIALOG --clear --backtitle "$PROJECT_NAME v$VERSION" \
         --title "Volume Information" \
         --msgbox "$INFO_TEXT" 24 80
 }
 
 perform_dump() {
     if ! load_config; then
-        $DIALOG --clear --backtitle "DB Migration Manager" \
+        $DIALOG --clear --backtitle "$PROJECT_NAME" \
             --title "Error" \
             --msgbox "Please configure the database first." 6 50
         return
@@ -524,20 +525,19 @@ perform_dump() {
         ;;
     esac
 
-    echo ""
     read -p "Press ENTER to continue..."
 }
 
 perform_load() {
     if ! load_config; then
-        $DIALOG --clear --backtitle "DB Migration Manager" \
+        $DIALOG --clear --backtitle "$PROJECT_NAME" \
             --title "Error" \
             --msgbox "Please configure the database first." 6 50
         return
     fi
     
     if [ ! -d "$DUMP_DIR" ] || [ -z "$(ls -A "$DUMP_DIR"/*.txt 2>/dev/null)" ]; then
-        $DIALOG --clear --backtitle "DB Migration Manager" \
+        $DIALOG --clear --backtitle "$PROJECT_NAME" \
             --title "Error" \
             --msgbox "No dump files found in $DUMP_DIR" 6 50
         return
@@ -552,7 +552,7 @@ perform_load() {
     done < <(ls -t "$DUMP_DIR"/*.txt 2>/dev/null)
     
     if [ ${#MENU_OPTIONS[@]} -eq 0 ]; then
-        $DIALOG --clear --backtitle "DB Migration Manager" \
+        $DIALOG --clear --backtitle "$PROJECT_NAME" \
             --title "Error" \
             --msgbox "No dump files found in $DUMP_DIR" 6 50
         return
@@ -569,7 +569,7 @@ perform_load() {
     fi
     
     if [ ! -f "$SELECTED_DUMP" ]; then
-        $DIALOG --clear --backtitle "DB Migration Manager" \
+        $DIALOG --clear --backtitle "$PROJECT_NAME" \
             --title "Error" \
             --msgbox "File not found: $SELECTED_DUMP" 6 50
         return
@@ -593,20 +593,19 @@ perform_load() {
         ;;
     esac
 
-    echo ""
     read -p "Press ENTER to continue..."
 }
 
 perform_migrate() {
     if ! load_config; then
-        $DIALOG --clear --backtitle "DB Migration Manager" \
+        $DIALOG --clear --backtitle "$PROJECT_NAME" \
             --title "Error" \
             --msgbox "Please configure the database first." 6 50
         return
     fi
 
 
-    $DIALOG --clear --backtitle "DB Migration Manager" \
+    $DIALOG --clear --backtitle "$PROJECT_NAME" \
         --title "Confirmation" \
         --yesno "Migrate $SRC_DB to $DST_DB?\n\nThis will:\n1. Dump from source\n2. Load to destination" 10 50
 
@@ -623,7 +622,6 @@ perform_migrate() {
     DUMP_FILE="$DUMP_DIR/$DUMP_FILENAME"
     log_info "📄 File: $DUMP_FILENAME"
 
-    echo ""
     log_step "Step 1/2: Dump..."
     case $DB_TYPE in
     mysql)
@@ -637,7 +635,6 @@ perform_migrate() {
         ;;
     esac
 
-    echo ""
     log_step "Step 2/2: Load..."
     case $DB_TYPE in
     mysql)
@@ -651,7 +648,6 @@ perform_migrate() {
         ;;
     esac
 
-    echo ""
     log_success "Migration completed!"
     read -p "Press ENTER to continue..."
 }

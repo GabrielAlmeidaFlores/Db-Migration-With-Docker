@@ -3,6 +3,9 @@
 
 FROM debian:bullseye-slim
 
+LABEL version="1.4.0"
+LABEL description="Database Migration Manager - Docker Mode"
+
 # Set UTF-8 locale for emoji support
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \

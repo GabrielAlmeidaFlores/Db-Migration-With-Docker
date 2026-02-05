@@ -1,5 +1,11 @@
 #!/bin/bash
 
+###
+# Log Library
+# Funções padronizadas para output colorido e formatado
+# Todas as funções são exportadas para uso em scripts filhos
+###
+
 export RED='\033[0;31m'
 export GREEN='\033[0;32m'
 export YELLOW='\033[1;33m'

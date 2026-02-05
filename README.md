@@ -1,6 +1,6 @@
 # Database Migration Manager
 
-**Version: 1.1.0**
+**Version: 1.4.0**
 
 ## Overview
 
@@ -60,33 +60,44 @@ The tool uses a nested Docker architecture:
    - Extract to `dependencies/sqlpackage/` directory
    - The structure should be: `dependencies/sqlpackage/sqlpackage.dll`
 
-4. **Make scripts executable**:
+4. **Make script executable**:
    ```bash
-   chmod +x run-docker-unix.sh
-   chmod +x db-manager.sh
+   chmod +x run.sh
    ```
 
 ## Usage
 
-### Linux/Unix/macOS
+### Universal Command (Auto-detects OS)
 
 ```bash
-./run-docker-unix.sh
+./run.sh
 ```
 
-### Windows
+The script automatically detects your operating system and runs the appropriate launcher:
+- **Linux/macOS** → Uses Unix launcher
+- **Windows (Git Bash/MSYS/MinGW)** → Uses Windows launcher
 
-Using Git Bash or similar:
+### Manual Execution (Optional)
+
+If you prefer to run the OS-specific launchers directly:
+
+**Linux/Unix/macOS:**
 ```bash
-./run-docker-windows.sh
+./lib/run-docker-unix.lib.sh
+```
+
+**Windows (Git Bash):**
+```bash
+./lib/run-docker-windows.lib.sh
 ```
 
 ### First Run
 
 On first execution, the tool will:
-1. Build the Docker image (takes 2-3 minutes)
-2. Create the `db-migration-dumps` volume
-3. Launch the interactive TUI
+1. Detect your operating system
+2. Build the Docker image (takes 2-3 minutes)
+3. Create the `db-migration-dumps` volume
+4. Launch the interactive TUI
 
 ## Main Menu Options
 
@@ -225,7 +236,7 @@ docker volume rm db-migration-dumps
 
 ### "SQLPACKAGE_DIR environment variable not set"
 - Ensure SqlPackage is in `dependencies/sqlpackage/`
-- Check `run-docker-*.sh` passes `-e SQLPACKAGE_DIR`
+- Check launcher scripts pass `-e SQLPACKAGE_DIR`
 
 ### "Dump directory must be /dumps"
 - Configuration auto-corrects on load
@@ -245,12 +256,14 @@ docker volume rm db-migration-dumps
 
 ```
 Database-Migration-Manager/
+├── run.sh                     # Universal launcher (auto-detects OS)
 ├── db-manager.sh              # Main TUI application
 ├── Dockerfile                 # Container build definition
-├── run-docker-unix.sh         # Linux/macOS launcher
-├── run-docker-windows.sh      # Windows launcher
 ├── lib/
-│   └── log.lib.sh            # Logging functions
+│   ├── metadata.lib.sh        # Project version and name
+│   ├── log.lib.sh             # Logging functions
+│   ├── run-docker-unix.lib.sh # Unix/Linux/macOS launcher
+│   └── run-docker-windows.lib.sh # Windows launcher
 ├── operation/
 │   ├── mysql-dump.operation.sh
 │   ├── mysql-load.operation.sh

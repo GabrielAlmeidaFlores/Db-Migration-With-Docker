@@ -1,23 +1,26 @@
 #!/bin/bash
 
+###
+# SQL Server Dump Operation
+# Exporta um banco SQL Server usando SqlPackage para formato BACPAC via Docker
+# Args:
+#   $1: SRC_HOST - Host do servidor SQL Server
+#   $2: SRC_PORT - Porta do servidor SQL Server
+#   $3: SRC_USER - Usuário do banco
+#   $4: SRC_PASS - Senha do banco
+#   $5: SRC_DB - Nome do banco de dados
+#   $6: DUMP_FILE - Caminho do arquivo de metadados (.txt que aponta para .bacpac)
+###
+
+source "$(dirname "$0")/../lib/metadata.lib.sh"
+source "$PROJECT_ROOT/lib/log.lib.sh"
+
 SRC_HOST=$1
 SRC_PORT=$2
 SRC_USER=$3
 SRC_PASS=$4
 SRC_DB=$5
 DUMP_FILE=$6
-
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info() { echo -e "${BLUE}ℹ️  $*${NC}"; }
-log_success() { echo -e "${GREEN}✅ $*${NC}"; }
-log_error() { echo -e "${RED}❌ $*${NC}"; }
-log_warning() { echo -e "${YELLOW}⚠️  $*${NC}"; }
-log_progress() { echo -e "${YELLOW}⏳ $*${NC}"; }
 
 DUMP_DIR="$(dirname "$DUMP_FILE")"
 

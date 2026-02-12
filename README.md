@@ -1,6 +1,6 @@
 # Database Migration Manager
 
-**Version: 1.5.0**
+**Version: 1.5.1**
 
 ## Overview
 
@@ -135,6 +135,7 @@ Imports a previously created dump file:
 - Select dump file from list
 - Choose destination database type
 - Enter destination connection details
+- **Important**: For MySQL, the destination database must already exist
 - Tool imports data safely
 
 **Use case**: Restore backup, clone database, or import to different engine
@@ -241,6 +242,11 @@ docker volume rm db-migration-dumps
 ### "Dump directory must be /dumps"
 - Configuration auto-corrects on load
 - Never manually set `DUMP_DIR` to non-volume paths
+
+### MySQL database does not exist on import
+- MySQL imports require the destination database to already exist
+- Create it manually: `CREATE DATABASE dbname;`
+- Then run the import operation
 
 ### MySQL/PostgreSQL connection fails
 - Verify `--network host` is working

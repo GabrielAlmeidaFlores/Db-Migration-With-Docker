@@ -27,18 +27,6 @@ if [ ! -f "$DUMP_FILE" ]; then
     exit 1
 fi
 
-log_info "Creating database $DST_DB on $DST_HOST:$DST_PORT if it doesn't exist..."
-
-docker run --rm \
-    --network host \
-    -e MYSQL_PWD="$DST_PASS" \
-    mysql:8.0 \
-    mysql \
-    -h "$DST_HOST" \
-    -P "$DST_PORT" \
-    -u "$DST_USER" \
-    -e "CREATE DATABASE IF NOT EXISTS \`$DST_DB\`;"
-
 log_progress "Importing into $DST_DB on $DST_HOST:$DST_PORT..."
 
 cat "$DUMP_FILE" | docker run --rm -i \

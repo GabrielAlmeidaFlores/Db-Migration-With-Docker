@@ -1,6 +1,6 @@
 # Database Migration Manager
 
-**Version: 1.5.1**
+**Version: 1.6.0**
 
 ## Overview
 
@@ -118,15 +118,30 @@ Performs a full database migration (dump + restore) in one operation:
 
 ### 2. DUMP - Export Database
 
-Exports a database to a dump file:
+Exports a database to a dump file with flexible options:
 
+**Dump Type Selection** (MySQL & PostgreSQL):
+Before creating the dump, you can choose what to include:
+- **Both (Recommended)**: Complete dump with structure and data
+- **Structure only**: Schema, tables, views, procedures, triggers (no data)
+- **Data only**: Table data only (no schema definitions)
+
+**Note**: SQL Server always dumps both structure and data (BACPAC format limitation)
+
+**Output Formats**:
 - **MySQL**: Creates `.sql` dump using `mysqldump`
 - **PostgreSQL**: Creates custom format dump using `pg_dump -F c`
 - **SQL Server**: Creates `.bacpac` file using SqlPackage
 
-Dumps are stored in `/dumps` (Docker volume `db-migration-dumps`)
+Dumps are stored in `/dumps` (Docker volume `db-migration-dumps`) with descriptive filenames:
+- `mysql-mydb-full-20260217-143022.txt` (both)
+- `mysql-mydb-structure-20260217-143022.txt` (structure only)
+- `mysql-mydb-data-20260217-143022.txt` (data only)
 
-**Use case**: Backup, versioning, or preparing for later import
+**Use cases**: 
+- **Structure only**: Schema comparisons, deploying empty databases, documentation
+- **Data only**: Migrating data to existing schema, data updates
+- **Both**: Full backups, complete migrations, versioning
 
 ### 3. LOAD - Import Database
 
@@ -187,16 +202,24 @@ DST_DB=mydb_copy
 ### MySQL
 - **Format**: SQL text file (`.sql`)
 - **Tool**: `mysqldump`
-- **Features**: Includes routines, triggers, events, uses single-transaction
+- **Options**:
+  - **Structure only**: `--no-data --routines --triggers --events`
+  - **Data only**: `--no-create-info --skip-triggers --skip-routines --skip-events --complete-insert`
+  - **Both**: `--single-transaction --routines --triggers --events`
 
 ### PostgreSQL
 - **Format**: Custom format (`.dump`)
 - **Tool**: `pg_dump -F c`
+- **Options**:
+  - **Structure only**: `--schema-only`
+  - **Data only**: `--data-only`
+  - **Both**: Default behavior (all included)
 - **Features**: Binary format, includes `--clean` and `--if-exists` on restore
 
 ### SQL Server
 - **Format**: BACPAC (`.bacpac`)
 - **Tool**: SqlPackage
+- **Options**: Always includes both structure and data (BACPAC format limitation)
 - **Features**: Schema + data, portable across SQL Server versions
 - **Note**: Creates `.txt` reference file containing path to actual `.bacpac`
 
@@ -257,6 +280,22 @@ docker volume rm db-migration-dumps
 - Ensure destination server has sufficient space
 - Check SQL Server edition compatibility
 - Review error logs in container output
+
+## Changelog
+
+### Version 1.6.0
+- **New Feature**: Dump type selection for MySQL and PostgreSQL
+  - Choose between structure only, data only, or both before dumping
+  - Interactive dialog menu for easy selection
+  - Filenames now include dump type for better organization
+- **Improved**: More descriptive dump filenames (`-structure-`, `-data-`, `-full-`)
+- **Enhanced**: Better logging messages indicating what's being dumped
+
+### Version 1.5.1
+- Initial stable release
+- Multi-database support (MySQL, PostgreSQL, SQL Server)
+- Interactive TUI with Dialog
+- Docker-first architecture
 
 ## Project Structure
 

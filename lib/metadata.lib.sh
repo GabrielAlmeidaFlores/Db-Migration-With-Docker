@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PROJECT_NAME="Database Migration Manager"
-VERSION="1.5.1"
+VERSION="1.6.0"
 
 ###
 # Auto-detect paths based on where this file is sourced from

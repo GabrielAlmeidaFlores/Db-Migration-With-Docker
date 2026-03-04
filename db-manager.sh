@@ -618,6 +618,22 @@ perform_load() {
     return
   fi
 
+  LOAD_OPTIONS=$($DIALOG --clear --backtitle "$PROJECT_NAME" \
+    --title "Import Options" \
+    --checklist "Select options for the import:" 10 65 2 \
+    "force"     "Continue on error (ignore table failures)" "off" \
+    "create_db" "Create database if it does not exist"      "off" \
+    3>&1 1>&2 2>&3)
+
+  if [ $? -ne 0 ]; then
+    return
+  fi
+
+  LOAD_FORCE="false"
+  CREATE_DB="false"
+  echo "$LOAD_OPTIONS" | grep -q "force"     && LOAD_FORCE="true"
+  echo "$LOAD_OPTIONS" | grep -q "create_db" && CREATE_DB="true"
+
   clear
   log_header "LOAD - Importing Database"
   log_info "📥 Starting load to $DST_DB..."
@@ -626,13 +642,13 @@ perform_load() {
 
   case $DB_TYPE in
   mysql)
-    "$SCRIPT_DIR/operation/mysql-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$SELECTED_DUMP"
+    "$SCRIPT_DIR/operation/mysql-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$SELECTED_DUMP" "$LOAD_FORCE" "$CREATE_DB"
     ;;
   postgres)
-    "$SCRIPT_DIR/operation/postgres-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$SELECTED_DUMP"
+    "$SCRIPT_DIR/operation/postgres-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$SELECTED_DUMP" "$LOAD_FORCE" "$CREATE_DB"
     ;;
   sqlserver)
-    "$SCRIPT_DIR/operation/sqlserver-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$SELECTED_DUMP"
+    "$SCRIPT_DIR/operation/sqlserver-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$SELECTED_DUMP" "$LOAD_FORCE" "$CREATE_DB"
     ;;
   esac
 
@@ -708,13 +724,13 @@ perform_migrate() {
   log_step "Step 2/2: Load..."
   case $DB_TYPE in
   mysql)
-    "$SCRIPT_DIR/operation/mysql-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+    "$SCRIPT_DIR/operation/mysql-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE" "false"
     ;;
   postgres)
-    "$SCRIPT_DIR/operation/postgres-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+    "$SCRIPT_DIR/operation/postgres-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE" "false"
     ;;
   sqlserver)
-    "$SCRIPT_DIR/operation/sqlserver-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE"
+    "$SCRIPT_DIR/operation/sqlserver-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE" "false"
     ;;
   esac
 

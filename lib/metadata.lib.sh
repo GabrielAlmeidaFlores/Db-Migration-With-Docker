@@ -1,7 +1,7 @@
 #!/bin/bash
 
 PROJECT_NAME="Database Migration Manager"
-VERSION="1.7.0"
+VERSION="1.8.0"
 
 if [ -z "$SCRIPT_DIR" ]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

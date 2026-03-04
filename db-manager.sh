@@ -679,6 +679,22 @@ perform_migrate() {
     fi
   fi
 
+  MIGRATE_OPTIONS=$($DIALOG --clear --backtitle "$PROJECT_NAME" \
+    --title "Import Options" \
+    --checklist "Select options for the import:" 10 65 2 \
+    "force"     "Continue on error (ignore table failures)" "off" \
+    "create_db" "Create database if it does not exist"      "off" \
+    3>&1 1>&2 2>&3)
+
+  if [ $? -ne 0 ]; then
+    return
+  fi
+
+  MIGRATE_FORCE="false"
+  MIGRATE_CREATE_DB="false"
+  echo "$MIGRATE_OPTIONS" | grep -q "force"     && MIGRATE_FORCE="true"
+  echo "$MIGRATE_OPTIONS" | grep -q "create_db" && MIGRATE_CREATE_DB="true"
+
   $DIALOG --clear --backtitle "$PROJECT_NAME" \
     --title "Confirmation" \
     --yesno "Migrate $SRC_DB to $DST_DB?\n\nThis will:\n1. Dump from source\n2. Load to destination" 10 50
@@ -724,13 +740,13 @@ perform_migrate() {
   log_step "Step 2/2: Load..."
   case $DB_TYPE in
   mysql)
-    "$SCRIPT_DIR/operation/mysql-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE" "false"
+    "$SCRIPT_DIR/operation/mysql-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE" "$MIGRATE_FORCE" "$MIGRATE_CREATE_DB"
     ;;
   postgres)
-    "$SCRIPT_DIR/operation/postgres-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE" "false"
+    "$SCRIPT_DIR/operation/postgres-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE" "$MIGRATE_FORCE" "$MIGRATE_CREATE_DB"
     ;;
   sqlserver)
-    "$SCRIPT_DIR/operation/sqlserver-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE" "false"
+    "$SCRIPT_DIR/operation/sqlserver-load.operation.sh" "$DST_HOST" "$DST_PORT" "$DST_USER" "$DST_PASS" "$DST_DB" "$DUMP_FILE" "$MIGRATE_FORCE" "$MIGRATE_CREATE_DB"
     ;;
   esac
 

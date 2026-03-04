@@ -1,12 +1,8 @@
-# Dockerfile for DB Migration Manager
-# Allows running the script on any OS (Windows, macOS, Linux)
-
 FROM debian:bullseye-slim
 
-LABEL version="1.5.1"
+LABEL version="1.7.0"
 LABEL description="Database Migration Manager - Docker Mode"
 
-# Set UTF-8 locale for emoji support
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     TERM=xterm-256color
@@ -53,8 +49,6 @@ RUN chmod +x /app/db-manager.sh /app/operation/*.sh /app/lib/*.sh
 # Create volume mount points
 RUN mkdir -p /dumps /config
 
-# Set environment to use system dialog (since we install it)
 ENV DIALOG=dialog
 
-# Run the main script
 ENTRYPOINT ["/app/db-manager.sh"]

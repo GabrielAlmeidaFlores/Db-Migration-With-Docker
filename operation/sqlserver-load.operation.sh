@@ -10,6 +10,8 @@
 #   $4: DST_PASS - Senha do banco
 #   $5: DST_DB - Nome do banco de dados destino
 #   $6: DUMP_FILE - Caminho do arquivo de metadados (.txt que aponta para .bacpac)
+#   $7: FORCE - Ignorado (SqlPackage é atômico)
+#   $8: CREATE_DB - Ignorado (SqlPackage cria o banco automaticamente)
 ###
 
 source "$(dirname "$0")/../lib/metadata.lib.sh"
@@ -21,6 +23,8 @@ DST_USER=$3
 DST_PASS=$4
 DST_DB=$5
 DUMP_FILE=$6
+FORCE=${7:-false}
+CREATE_DB=${8:-false}
 
 if [ -z "$SQLPACKAGE_DIR" ]; then
     log_error "SQLPACKAGE_DIR environment variable not set"
